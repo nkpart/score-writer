@@ -4,10 +4,12 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE OverloadedLists              #-}
 module Score where
 
 import           Control.Lens
 import qualified Data.Foldable       as F
+import Control.Monad (join)
 import qualified Data.Music.Lilypond as L
 import           Data.Ratio
 import           Data.Sequence
@@ -41,6 +43,7 @@ data Note =
        ,_noteAccent :: Bool
        ,_noteBuzz :: Bool
        ,_noteDuration :: Ratio Integer
+       ,_noteSlur :: Maybe Bool
        ,_noteEmbellishment :: Maybe Embellishment}
   deriving (Eq,Show)
 
@@ -48,25 +51,21 @@ newtype Beamed =
   Beamed (Seq Note)
   deriving (Eq,Show)
 
-data Phrase =
-  Phrase {_phraseAnacrusis :: Maybe Beamed
-         ,_phraseBeams :: Seq Beamed}
-  deriving (Eq,Show)
-
 data Part =
-  Part { _partPhrase :: Phrase,
-         _partRepeat :: Repeat
-       }
+  Part {_partRepeat :: Repeat
+       ,_partAnacrusis :: Maybe Beamed
+       ,_partBeams :: Seq Beamed}
   deriving (Eq,Show)
 
 data Repeat
   = NoRepeat
   | Repeat
-  | Return Phrase
+  | Return (Seq Beamed)
   deriving (Eq,Show)
 
-newtype Score =
-  Score (Seq Part)
+data Score =
+  Score
+  { _scoreSignature :: (Integer, Integer), _scoreParts :: Seq Part}
   deriving (Eq,Show)
 
 -- | Concrete lenses and prisms
@@ -74,17 +73,17 @@ newtype Score =
 makePrisms ''Hand
 makeLenses ''Note
 makeWrapped ''Beamed
-makeLenses ''Phrase
+-- makeLenses ''Phrase
 makeLenses ''Part
 makePrisms ''Repeat
-makeWrapped ''Score
+--- makeXXX ''Score
 
 -- | Typeclass generalised members
 
 class AsHand p f s where
   _Hand ::
     Optic' p f s Hand
-  -- Optic is lens (set and get), iso (to and from), prism (0 or 1), traversal (0 - many)
+  -- Optic is lens (set and get), iso (to and from), prism (0 or 1), or traversal (0 - many), or fold (get many)
 
 instance (Choice p, Applicative f) => AsHand p f L.Note where
   _Hand = prism f g
@@ -118,15 +117,11 @@ instance AsNote p f Note where
 instance (Applicative f) => AsNote (->) f Beamed where
   _Note = _Wrapped . traverse
 
-instance (Applicative f) => AsNote (->) f Phrase where
-  _Note f (Phrase mb seqs) =
-    Phrase <$> (_Just . _Note) f mb <*> (traverse . _Note) f seqs
-
 instance (Applicative f) => AsNote (->) f Part where
-  _Note f (Part ph rep) = Part <$> _Note f ph <*> pure rep
+  _Note f (Part rep x ph) = Part rep x <$> (traverse . _Note) f ph
 
 instance (Applicative f) => AsNote (->) f Score where
-  _Note f (Score s) = Score <$> (traverse . _Note) f s
+  _Note f (Score sig s) = Score sig <$> (traverse . _Note) f s
 
 -- Utilities
 
@@ -141,9 +136,10 @@ swapHands :: AsHand (->) Identity s
           => s -> s
 swapHands = _Hand %~ swapH
 
-renderMe :: Beamed -> L.Music
-renderMe =
+renderBeamed :: Beamed -> L.Music
+renderBeamed =
   L.Sequential
+  . join
   . F.toList
   . fmap renderNote
   . when' ((> 1) . F.length) ((_head . _2 .~ Just True) . (_last . _2 .~ Just False))
@@ -153,7 +149,13 @@ renderMe =
                          then f v
                          else v
 
-renderNote :: (Note, Maybe Bool) -> L.Music
+type Toggle = Maybe Bool
+
+toggle :: a -> a -> a -> Toggle -> a
+toggle f g h = maybe f (\v -> bool v g h)
+  where bool x a b = if x then b else a
+
+renderNote :: (Note, Maybe Bool) -> [L.Music]
 renderNote (n, beamState) =
   let pitch = hand leftPitch rightPitch (n ^. noteHand)
       oppPitch = hand leftPitch rightPitch (swapHands $ n ^. noteHand)
@@ -173,53 +175,87 @@ renderNote (n, beamState) =
                 else id
       events = []
       thisHead = checkBuzz $ L.Note (L.NotePitch pitch Nothing) (Just $ L.Duration (n ^. noteDuration)) events -- TODO accents etc
+      tied =
+        toggle id L.endSlur L.beginSlur (n^. noteSlur)
       beamed =
-        case beamState of
-          Nothing -> thisHead
-          Just v -> (if v then L.beginBeam else L.endBeam) thisHead
+        toggle id L.endBeam L.beginBeam beamState
 
-  in L.Sequential $
+      finalNote =
+        beamed . tied $ thisHead
+
+  in
        case embell of
          -- any grace notes need to go before the stemDown
-         Just e -> [L.Slash1 "stemUp", e, L.Slash1 "stemDown", beamed]
-         Nothing -> [L.Slash1 "stemDown", beamed]
+         Just e -> [L.Slash1 "stemUp", e, L.Slash1 "stemDown", finalNote]
+         Nothing -> [L.Slash1 "stemDown", finalNote]
 
 -- https://hackage.haskell.org/package/lilypond-1.9.0/docs/Data-Music-Lilypond.html
            -- [L.Articulation L.Default L.Accent]]-- the default note is a qtr note, so we quotient that out
 
-beginScore :: Integer -> Integer -> L.Music
-beginScore n m = L.Sequential [
-             L.New "Staff" Nothing (
-                 L.Slash "with" $ L.Sequential [
-                     L.Override "StaffSymbol.line-count" (L.toValue (1::Int))
-                     ]
-                 )
-           , L.Clef L.Percussion
-           , L.Time n m]
+beginScore n m =
+  -- L.Slash "layout" (L.Slash "context" (L.Sequential [L.Slash1 "Score", L.Slash1 "consists #(bars-per-line-engraver '(4))"])) ^+^
+  L.Sequential [
+    L.New "Staff" Nothing (
+      L.Slash "with" $ L.Sequential [
+          L.Override "StaffSymbol.line-count" (L.toValue (1::Int))
 
-beamOf = renderMe . Beamed . fromList
+          ]
+      )
+  , L.Clef L.Percussion
+  , L.Time n m]
+
+
+tidy (L.Sequential [x]) = tidy x
+tidy x = x
+
+beamOf = renderBeamed . Beamed
+
+renderScore (Score (n,m) ps) =
+  L.Sequential (
+  -- TODO Parts -- anacruses, repeats
+  -- measures per line
+  beginScore n m : fmap renderBeamed (ps ^.. traverse . partBeams . traverse) )
 
 someFunc :: IO ()
 someFunc =
-  do let music = L.Sequential [
-                    beginScore 2 4
-                  , beamOf [rFlam (1/4)]
-                  , beamOf [lFlam (1/8), rn (1/8) & buzz]
-                  , beamOf [rn (1/8), ln (1/8)]
-                  , beamOf [rn (1/8) & buzz & accent, rn (1/8) & accent]
-                  , renderMe $
+  do let music = Score (4,4) . pure . Part NoRepeat Nothing $
+                 [  Beamed [rFlam (1/4)]
+                  , Beamed [lFlam (1/8), rn (1/8) & buzz & start noteSlur]
+                  , Beamed [rn (1/8) & end noteSlur, ln (1/8)]
+                  , Beamed [rn (1/8) & buzz & accent & start noteSlur, rn (1/8) & accent & end noteSlur]
+                  ,
                       singles4Qtr & _Note . noteDuration .~ (1/16)
-                                  & elementOf _Note 0 . noteBuzz .~ True
-                                  & elementOf _Note 1 . noteHand .~ R
+                                  & elementOf _Note 0 %~ buzz . start noteSlur
+                                  & elementOf _Note 1 %~ ((noteHand .~ R) . end noteSlur )
                                   & elementOf _Note 2 . noteEmbellishment .~ Just Drag
-                  , renderMe $
+                  ,
                       singles4Qtr & _Note . noteDuration .~ (1/16)
-                                  & elementOf _Note 0 . noteBuzz .~ True
+                                  & elementOf _Note 0 . noteBuzz .~ False
                                   & elementOf _Note 2 . noteEmbellishment .~ Just Drag
                   ]
 
+     let prefix =
+           "\
+\#(define ((bars-per-line-engraver bar-list) context) \n\
+\  (let* ((working-copy bar-list)\n\
+\         (total (1+ (car working-copy))))\n\
+\    `((acknowledgers\n\
+\       (paper-column-interface\n\
+\        . ,(lambda (engraver grob source-engraver)\n\
+\             (let ((internal-bar (ly:context-property context 'internalBarNumber)))\n\
+\               (if (and (pair? working-copy)\n\
+\                        (= (remainder internal-bar total) 0)\n\
+\                        (eq? #t (ly:grob-property grob 'non-musical)))\n\
+\                   (begin\n\
+\                     (set! (ly:grob-property grob 'line-break-permission) 'force)\n\
+\                     (if (null? (cdr working-copy))\n\
+\                         (set! working-copy bar-list)\n\
+\                         (begin\n\
+\                           (set! working-copy (cdr working-copy))))\n\
+\                           (set! total (+ total (car working-copy))))))))))))\n\
+\\n"
 
-     writeFile "test.ly" (runPrinter . pretty $ music)
+     writeFile "test.ly" (mappend prefix $ runPrinter . pretty . renderScore $ music)
      callCommand "lilypond test.ly"
      callCommand "open -a Safari -g test.pdf"
 
@@ -250,4 +286,11 @@ accent = noteAccent .~ True
 
 buzz = noteBuzz .~ True
 
-aNote h d = Note h False False d Nothing
+start l = l .~ Just True
+
+end l = l .~ Just False
+
+clear l = l .~ Nothing
+
+aNote :: Hand -> Ratio Integer -> Note
+aNote h d = Note h False False d Nothing Nothing
