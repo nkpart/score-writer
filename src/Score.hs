@@ -17,18 +17,18 @@ someFunc =
   do let music = Score (4,4) . pure . Part NoRepeat Nothing $
                  [  [rFlam (1/4)]
                   , [lFlam (1/8), rn (1/8) & roll]
-                  , [rn (1/8) & endRoll, ln (1/8)]
+                  , [rn (1/8), triplet [ln (1/16) & endRoll, rn (1/16), ln (1/16)]]
                   , [rn (1/8) & accentRoll, rn (1/8) & accent . endRoll]
                   , singles4Qtr
-                    & _Note . noteDuration .~ (1/16)
-                    & elementOf _Note 0 %~ roll
-                    & elementOf _Note 1 %~ ((noteHand .~ R) . endRoll )
-                    & elementOf _Note 2 . noteEmbellishment .~ Just Drag
+                    & _NoteHead . noteHeadDuration .~ (1/16)
+                    & elementOf _NoteHead 0 %~ roll
+                    & elementOf _NoteHead 1 %~ ((noteHeadHand .~ R) . endRoll )
+                    & elementOf _NoteHead 2 . noteHeadEmbellishment .~ Just Drag
                   , singles4Qtr
-                    & _Note . noteDuration .~ (1/16)
-                    & elementOf _Note 0 %~ ((noteBuzz .~ False) . dot)
-                    & elementOf _Note 1 %~ cut
-                    & elementOf _Note 2 . noteEmbellishment .~ Just Drag
+                    & _NoteHead . noteHeadDuration .~ (1/16)
+                    & elementOf _NoteHead 0 %~ ((noteHeadBuzz .~ False) . dot)
+                    & elementOf _NoteHead 1 %~ cut
+                    & elementOf _NoteHead 2 . noteHeadEmbellishment .~ Just Drag
                   ]
 
      writeFile "test.ly" (printScore music)
@@ -37,38 +37,38 @@ someFunc =
 
 accentRoll = accent . roll
 
-roll = buzz . start noteSlur
+roll = buzz . start (_NoteHead . noteHeadSlur)
 
-endRoll = end noteSlur
+endRoll = end (_NoteHead . noteHeadSlur)
 
 -- L. R- L.f L.d
 
 -- BITS
 
-dot :: Note -> Note
-dot = noteDuration %~ (* (3/2))
+triplet = Tuplet (3 % 2)
 
-cut :: Note -> Note
-cut = noteDuration %~ (* (1/2))
+dot = noteHeadDuration %~ (* (3/2))
+
+cut = noteHeadDuration %~ (* (1/2))
 
 singles4Qtr :: Beamed
 singles4Qtr = [n R,n L,n R,n L]
          where n h = aNote h (1/4)
 
-lFlam d = aNote L d & noteEmbellishment .~ Just Flam
+lFlam d = aNote L d & _NoteHead . noteHeadEmbellishment .~ Just Flam
 
-rFlam d = aNote R d & noteEmbellishment .~ Just Flam
+rFlam d = aNote R d & _NoteHead . noteHeadEmbellishment .~ Just Flam
 
 ln d = aNote L d
 rn d = aNote R d
 
-flam = noteEmbellishment .~ Just Flam
+flam = _NoteHead . noteHeadEmbellishment .~ Just Flam
 
-drag = noteEmbellishment .~ Just Drag
+drag = _NoteHead . noteHeadEmbellishment .~ Just Drag
 
-accent = noteAccent .~ True
+accent = _NoteHead . noteHeadAccent .~ True
 
-buzz = noteBuzz .~ True
+buzz = _NoteHead . noteHeadBuzz .~ True
 
 start l = l .~ Just True
 
@@ -77,4 +77,4 @@ end l = l .~ Just False
 clear l = l .~ Nothing
 
 aNote :: Hand -> Ratio Integer -> Note
-aNote h d = Note h False False d Nothing Nothing
+aNote h d = Note $ NoteHead h False False d Nothing Nothing

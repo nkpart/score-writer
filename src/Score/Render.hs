@@ -4,6 +4,9 @@ import           Control.Lens
 import           Control.Monad       (join)
 import qualified Data.Foldable       as F
 import qualified Data.Music.Lilypond as L
+import           Data.Ratio
+import qualified Data.Sequence       as S
+import Data.Sequence ((><))
 import           Data.VectorSpace
 import           Score.Types
 import           Text.Pretty
@@ -35,7 +38,7 @@ renderScore (Score (n,m) ps) =
   L.Slash "score" $
   -- TODO Parts -- anacruses, repeats
   L.Sequential (
-     beginScore n m (join (fmap renderBeamed (ps ^.. traverse . partBeams . traverse)))
+     beginScore n m (renderBeamed =<< (ps ^.. traverse . partBeams . traverse))
      -- the {} from slash1/slash here is important
      ++ [L.Slash1 "layout", L.Sequential $ pure (L.Slash "context" (L.Sequential [L.Slash1 "Score", L.Slash1 "consists #(bars-per-line-engraver '(4))"]))]
                )
@@ -51,20 +54,54 @@ beginScore n m i =
 
 renderBeamed :: Beamed -> [L.Music]
 renderBeamed =
-    join
-  . F.toList
+    F.toList
+  . buildMusic
+  . addBeams
   . fmap renderNote
-  . when' ((> 1) . F.length) ((_head . _2 .~ Just True) . (_last . _2 .~ Just False))
-  . fmap (\v -> (v, Nothing))
   . view _Wrapped
-  where when' p f v = if p v
-                         then f v
-                         else v
+  -- F.toList $
+  -- case fromList $ F.toList (b ^. _Wrapped) of
+  --   Right (Bookended a as e) -> renderNote (Just True) a >< (renderNote Nothing =<< as) >< renderNote (Just False) e
+  --   Left xs -> renderNote Nothing =<< xs
 
+data RenderedNote = Graced (Maybe L.Music) L.Music
+                  | Tupleted Int Int (S.Seq RenderedNote)
+
+firstMusic f (Graced mb n) = Graced mb <$> f n
+firstMusic f (Tupleted n d xs) = case F.toList xs of
+                                   [] -> pure (Tupleted n d xs)
+                                   (x:xs) -> fmap (\x' -> Tupleted n d $ S.fromList (x':xs)) (firstMusic f x)
+
+lastMusic f (Graced mb n) = Graced mb <$> f n
+lastMusic f (Tupleted n d xs) = case F.toList xs of
+                                   [] -> pure (Tupleted n d xs)
+                                   xs@(_:_) ->
+                                     let (x:rest) = reverse xs
+                                      in fmap (\x' -> Tupleted n d $ S.fromList $ reverse (x':rest)) (lastMusic f x)
+
+buildMusic rns = rns >>= f
+  where f (Graced mb l) = maybe (pure l) (\v -> S.fromList [v,l]) mb
+        f (Tupleted n d more) =
+          pure $
+          L.Tuplet n d (L.Sequential . F.toList . buildMusic $ more)
+
+-- TODO: check if amount of major notes is > 1
+addBeams :: S.Seq RenderedNote -> S.Seq RenderedNote
+addBeams rn =
+  if S.length rn > 1
+     then rn & _head . firstMusic %~ L.beginBeam
+             & _last . lastMusic %~ L.endBeam
+     else rn
+
+renderNote :: Note -> RenderedNote
+renderNote (Note h) = renderNoteHead h
+renderNote (Tuplet r h) = Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) (fmap renderNote h)
+
+x (m, i) = maybe (S.fromList [i] )(\v -> S.fromList [v, i]) m
 
 -- TODO: test by building pngs and comparing to known good versions
-renderNote :: (NoteHead, Maybe Bool) -> [L.Music]
-renderNote (n, beamState) =
+renderNoteHead :: NoteHead -> RenderedNote -- (Maybe L.Music, L.Music)
+renderNoteHead n =
   let pitch = hand leftPitch rightPitch (n ^. noteHeadHand)
       oppPitch = hand leftPitch rightPitch (swapHands $ n ^. noteHeadHand)
       embell = fmap f (n^.noteHeadEmbellishment)
@@ -85,17 +122,17 @@ renderNote (n, beamState) =
       thisHead = checkBuzz $ L.Note (L.NotePitch pitch Nothing) (Just $ L.Duration (n ^. noteHeadDuration)) events -- TODO accents etc
       tied =
         toggle id L.endSlur L.beginSlur (n^. noteHeadSlur)
-      beamed =
-        toggle id L.endBeam L.beginBeam beamState
+      beamed = id
+        -- toggle id L.endBeam L.beginBeam beamState
 
       finalNote =
         beamed . tied $ thisHead
 
-  in
-       case embell of
+  in Graced embell finalNote
+       -- case embell of
          -- it seems grace notes are always stem up
-         Just e -> [e, finalNote]
-         Nothing -> [finalNote]
+         -- Just e -> [e, finalNote]
+         -- Nothing -> [finalNote]
          -- if they aren't we need this:
          -- any grace notes need to go before the stemDown
          -- Just e -> [L.Slash1 "stemUp", e, L.Slash1 "stemDown", finalNote]
