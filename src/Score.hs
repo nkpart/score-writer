@@ -7,29 +7,31 @@
 module Score where
 
 import           Control.Lens
+import           Data.Monoid
 import           Data.Ratio
 import           Score.Render
 import           Score.Types
 import           System.Process
 
-someFunc :: IO ()
-someFunc =
-  do let music = Score (4,4) . pure . Part NoRepeat Nothing $
-                 [  [rFlam (1/4)]
-                  , [lFlam (1/8), rn (1/8) & roll]
-                  , [rn (1/8), triplet [ln (1/16) & endRoll, rn (1/16), ln (1/16)]]
-                  , [rn (1/8) & accentRoll, rn (1/8) & accent . endRoll]
-                  , singles4Qtr
-                    & _NoteHead . noteHeadDuration .~ (1/16)
-                    & elementOf _NoteHead 0 %~ roll
-                    & elementOf _NoteHead 1 %~ ((noteHeadHand .~ R) . endRoll )
-                    & elementOf _NoteHead 2 . noteHeadEmbellishment .~ Just Drag
-                  , singles4Qtr
-                    & _NoteHead . noteHeadDuration .~ (1/16)
-                    & elementOf _NoteHead 0 %~ ((noteHeadBuzz .~ False) . dot)
-                    & elementOf _NoteHead 1 %~ cut
-                    & elementOf _NoteHead 2 . noteHeadEmbellishment .~ Just Drag
-                  ]
+aTune :: IO ()
+aTune =
+  do let music =
+           Score (6,8) [Part NoRepeat Nothing firstPart]
+         firstPart =
+           let beginning =
+                  [[r8 & flam . dot, r8 & roll . cut, r8 & endRoll] , [l4 & flam], [r8 & roll]
+                  , [triplet [l8 & accent . endRoll, r8, l8], r8 & flam] , [l8 & flam . dot, r8 & cut, l8]]
+            in beginning <> firstEnding <> beginning <> secondEnding
+         firstEnding =
+           [[r8 & roll, triplet [l8 & endRoll, r8, l8]]
+           , [Tuplet (2 % 3) [r8 & roll . accent, l8 & roll . endRoll . accent]]
+           , [r16 & endRoll, l16,r16,l16,r8]
+           , [l8 & dot, r8 & cut, l8]]
+         secondEnding =
+           [[r8 & flam . dot, r8 & roll . cut, r8 & endRoll ],
+             [r8 & roll . dot, r8 & endRoll . cut, l8 & accent . roll],
+             [r8 & endRoll . dot, l8 & cut, r8],
+             [l4 & flam . dot]]
 
      writeFile "test.ly" (printScore music)
      callCommand "lilypond test.ly"
@@ -37,19 +39,15 @@ someFunc =
 
 accentRoll = accent . roll
 
-roll = buzz . start (_NoteHead . noteHeadSlur)
+roll = buzz . (_NoteHead . noteHeadSlurBegin .~ True)
 
-endRoll = end (_NoteHead . noteHeadSlur)
-
--- L. R- L.f L.d
-
--- BITS
+endRoll = _NoteHead . noteHeadSlurEnd .~ True
 
 triplet = Tuplet (3 % 2)
 
-dot = noteHeadDuration %~ (* (3/2))
+dot = _NoteHead . noteHeadDuration %~ (* (3/2))
 
-cut = noteHeadDuration %~ (* (1/2))
+cut = _NoteHead . noteHeadDuration %~ (* (1/2))
 
 singles4Qtr :: Beamed
 singles4Qtr = [n R,n L,n R,n L]
@@ -61,6 +59,16 @@ rFlam d = aNote R d & _NoteHead . noteHeadEmbellishment .~ Just Flam
 
 ln d = aNote L d
 rn d = aNote R d
+
+l4 = ln (1/4)
+l8 = ln (1/8)
+l16 = ln (1/16)
+l32 = ln (1/32)
+
+r4 = rn (1/4)
+r8 = rn (1/8)
+r16 = rn (1/16)
+r32 = rn (1/32)
 
 flam = _NoteHead . noteHeadEmbellishment .~ Just Flam
 
@@ -77,4 +85,4 @@ end l = l .~ Just False
 clear l = l .~ Nothing
 
 aNote :: Hand -> Ratio Integer -> Note
-aNote h d = Note $ NoteHead h False False d Nothing Nothing
+aNote h d = Note $ NoteHead h False False d False False Nothing

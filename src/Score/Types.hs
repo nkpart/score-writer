@@ -36,11 +36,12 @@ data Embellishment
 
 data NoteHead =
   NoteHead {_noteHeadHand :: Hand
-       ,_noteHeadAccent :: Bool
-       ,_noteHeadBuzz :: Bool
-       ,_noteHeadDuration :: Ratio Integer
-       ,_noteHeadSlur :: Maybe Bool
-       ,_noteHeadEmbellishment :: Maybe Embellishment}
+           ,_noteHeadAccent :: Bool
+           ,_noteHeadBuzz :: Bool
+           ,_noteHeadDuration :: Ratio Integer
+           ,_noteHeadSlurBegin :: Bool
+           ,_noteHeadSlurEnd :: Bool
+           ,_noteHeadEmbellishment :: Maybe Embellishment}
   deriving (Eq,Show)
 
 

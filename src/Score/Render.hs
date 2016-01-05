@@ -48,9 +48,12 @@ beginScore n m i =
     L.New "Staff" Nothing (
       L.Slash "with" $ L.Sequential [
           L.Override "StaffSymbol.line-count" (L.toValue (1::Int))
+          ,L.Override "Stem.direction" (L.toValue (-1))
+          ,L.Override "StemTremolo.slope" (L.toValue 0.25)
+           -- ,L.Override "StemTremolo.Y-offset" (L.toValue (-0.8))
           ]
       )
-  , L.Sequential (L.Clef L.Percussion : L.Time n m: i) ]
+  , L.Sequential (L.Clef L.Percussion : L.Time n m :  i) ]
 
 renderBeamed :: Beamed -> [L.Music]
 renderBeamed =
@@ -85,7 +88,6 @@ buildMusic rns = rns >>= f
           pure $
           L.Tuplet n d (L.Sequential . F.toList . buildMusic $ more)
 
--- TODO: check if amount of major notes is > 1
 addBeams :: S.Seq RenderedNote -> S.Seq RenderedNote
 addBeams rn =
   if S.length rn > 1
@@ -117,16 +119,30 @@ renderNoteHead n =
                 then L.Tremolo 4 . (0.25*^) -- adding tremolo adds noteHead value, reduce the durations to compensate
                      -- there's a sn8:32 syntax as well (the :32), that might not add value. but im not sure
                      -- that this library supports it
+                     -- TODO: tremolo doesn't look quite right
                 else id
-      events = []
-      thisHead = checkBuzz $ L.Note (L.NotePitch pitch Nothing) (Just $ L.Duration (n ^. noteHeadDuration)) events -- TODO accents etc
-      tied =
-        toggle id L.endSlur L.beginSlur (n^. noteHeadSlur)
+      events =
+        let accF = 
+              if n^.noteHeadAccent
+                then (L.Articulation L.Above L.Accent:)
+                else id
+            buzzF =
+              if n^.noteHeadBuzz
+                 then (L.TremoloS 32:)
+                 else id
+         in accF . buzzF $ []
+      thisHead = L.Note (L.NotePitch pitch Nothing) (Just $ L.Duration (n ^. noteHeadDuration)) events
+      endTie = if n^.noteHeadSlurEnd
+                  then L.endSlur
+                  else id
+      startTie = if n^.noteHeadSlurBegin
+                  then L.beginSlur
+                  else id
       beamed = id
         -- toggle id L.endBeam L.beginBeam beamState
 
       finalNote =
-        beamed . tied $ thisHead
+        beamed . startTie . endTie $ thisHead
 
   in Graced embell finalNote
        -- case embell of
