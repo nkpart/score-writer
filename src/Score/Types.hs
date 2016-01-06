@@ -59,15 +59,15 @@ instance IsList Beamed where
   toList (Beamed b) = toList b
 
 data Part =
-  Part {_partRepeat :: Repeat
-       ,_partAnacrusis :: Maybe Beamed
-       ,_partBeams :: Seq Beamed}
+  Part {_partAnacrusis :: Maybe Beamed
+       ,_partBeams :: Seq Beamed
+       ,_partRepeat :: Repeat}
   deriving (Eq,Show)
 
 data Repeat
   = NoRepeat
   | Repeat
-  | Return (Seq Beamed)
+  | Return (Seq Beamed, Seq Beamed)
   deriving (Eq,Show)
 
 data Score =
@@ -122,7 +122,7 @@ instance (Applicative f) => AsNoteHead (->) f Beamed where
   _NoteHead = _Wrapped . traverse . _NoteHead
 
 instance (Applicative f) => AsNoteHead (->) f Part where
-  _NoteHead f (Part rep x ph) = Part rep x <$> (traverse . _NoteHead) f ph
+  _NoteHead f (Part x ph rep) = Part x <$> (traverse . _NoteHead) f ph <*> pure rep
 
 instance (Applicative f) => AsNoteHead (->) f Score where
   _NoteHead f (Score sig s) = Score sig <$> (traverse . _NoteHead) f s

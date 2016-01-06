@@ -16,12 +16,20 @@ import           System.Process
 aTune :: IO ()
 aTune =
   do let music =
-           Score (6,8) [Part NoRepeat Nothing firstPart]
+           Score (6,8) [firstPart, secondPart]
          firstPart =
-           let beginning =
+             Part Nothing (firstBeginning <> firstEnding <> firstBeginning <> secondEnding) Repeat
+         firstBeginning =
                   [[r8 & flam . dot, r8 & roll . cut, r8 & endRoll] , [l4 & flam], [r8 & roll]
                   , [triplet [l8 & accent . endRoll, r8, l8], r8 & flam] , [l8 & flam . dot, r8 & cut, l8]]
-            in beginning <> firstEnding <> beginning <> secondEnding
+         secondPart =
+           let beginning =
+                 [[r4 & roll. dot], [r4 & endRoll], [r8 & roll],
+                  [l8 & endRoll . accent, r8 & roll, r8 & endRoll],
+                  [l8 & flam . dot, r8 & cut, l8]]
+           in Part Nothing
+                   (beginning <> firstEnding)
+                   (Return (beginning <> secondEnding, firstBeginning <> secondEnding))
          firstEnding =
            [[r8 & roll, triplet [l8 & endRoll, r8, l8]]
            , [Tuplet (2 % 3) [r8 & roll . accent, l8 & roll . endRoll . accent]]

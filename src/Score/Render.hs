@@ -38,10 +38,19 @@ renderScore (Score (n,m) ps) =
   L.Slash "score" $
   -- TODO Parts -- anacruses, repeats
   L.Sequential (
-     beginScore n m (renderBeamed =<< (ps ^.. traverse . partBeams . traverse))
+     beginScore n m (F.toList . fmap renderPart $ ps)
      -- the {} from slash1/slash here is important
      ++ [L.Slash1 "layout", L.Sequential $ pure (L.Slash "context" (L.Sequential [L.Slash1 "Score", L.Slash1 "consists #(bars-per-line-engraver '(4))"]))]
                )
+renderPart p =
+  let beams = (p ^.. partBeams . traverse) >>= renderBeamed
+      thisPart = L.Sequential beams
+      r = L.Sequential . (=<<) renderBeamed . F.toList
+   in
+    case p ^. partRepeat of
+      NoRepeat -> thisPart
+      Repeat -> L.Repeat False 2 thisPart Nothing
+      Return (firstTime, secondTime) -> L.Repeat False 2 thisPart (Just (r firstTime, r secondTime))
 
 beginScore n m i =
   [
