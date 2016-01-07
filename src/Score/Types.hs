@@ -5,7 +5,12 @@
 {-# LANGUAGE OverloadedLists           #-}
 {-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE TypeFamilies              #-}
-module Score.Types where
+module Score.Types
+       (
+         module Score.Types
+       , GHC.Exts.fromList
+       )
+       where
 
 import           Control.Lens
 import           Data.Ratio
@@ -32,6 +37,7 @@ hand _ a R = a
 data Embellishment
   = Flam
   | Drag
+  | Ruff
   deriving (Eq,Show)
 
 data NoteHead =
@@ -59,8 +65,8 @@ instance IsList Beamed where
   toList (Beamed b) = toList b
 
 data Part =
-  Part {_partAnacrusis :: Maybe Beamed
-       ,_partBeams :: Seq Beamed
+  Part {
+        _partBeams :: Seq Beamed
        ,_partRepeat :: Repeat}
   deriving (Eq,Show)
 
@@ -72,7 +78,9 @@ data Repeat
 
 data Score =
   Score
-  { _scoreSignature :: (Integer, Integer), _scoreParts :: Seq Part}
+  { _scoreSignature :: (Integer, Integer),
+    _scoreAnacrusis :: Maybe Beamed,
+    _scoreParts :: Seq Part}
   deriving (Eq,Show)
 
 -- | Concrete lenses and prisms
@@ -111,6 +119,10 @@ instance AsHand p f Hand where
 instance (p ~ (->),Functor f) => AsHand p f NoteHead where
   _Hand = noteHeadHand
 
+instance (p ~ (->),Applicative f) => AsHand p f Note where
+  _Hand f (Note n) = Note <$> _Hand f n
+  _Hand f (Tuplet r n) = Tuplet r <$> (traverse . _Hand) f n
+
 instance AsNoteHead p f NoteHead where
   _NoteHead = id
 
@@ -122,10 +134,11 @@ instance (Applicative f) => AsNoteHead (->) f Beamed where
   _NoteHead = _Wrapped . traverse . _NoteHead
 
 instance (Applicative f) => AsNoteHead (->) f Part where
-  _NoteHead f (Part x ph rep) = Part x <$> (traverse . _NoteHead) f ph <*> pure rep
+  _NoteHead f (Part ph rep) = Part <$> (traverse . _NoteHead) f ph <*> pure rep
 
 instance (Applicative f) => AsNoteHead (->) f Score where
-  _NoteHead f (Score sig s) = Score sig <$> (traverse . _NoteHead) f s
+  -- TODO should this touch the anacrusis?
+  _NoteHead f (Score sig ana s) = Score sig ana <$> (traverse . _NoteHead) f s
 
 -- | ???
 

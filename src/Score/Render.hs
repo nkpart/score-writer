@@ -34,14 +34,20 @@ engraverPrefix =
 \                           (set! total (+ total (car working-copy))))))))))))\n\
 \\n"
 
-renderScore (Score (n,m) ps) =
-  L.Slash "score" $
-  -- TODO Parts -- anacruses, repeats
-  L.Sequential (
-     beginScore n m (F.toList . fmap renderPart $ ps)
-     -- the {} from slash1/slash here is important
-     ++ [L.Slash1 "layout", L.Sequential $ pure (L.Slash "context" (L.Sequential [L.Slash1 "Score", L.Slash1 "consists #(bars-per-line-engraver '(4))"]))]
-               )
+  -- TODO anacruses, remove clef from every line, staff height bigger
+  -- title/author/style
+renderScore (Score (n,m) anacrusis ps) =
+  let content = 
+        beginScore n m ((anac ++) . F.toList . fmap renderPart $ ps)
+
+      -- the {} from slash1/slash here is important
+      styles = [L.Slash1 "layout", L.Sequential $ pure (L.Slash "context" (L.Sequential [L.Slash1 "Score", L.Slash1 "consists #(bars-per-line-engraver '(4))"]))]
+      anac = case anacrusis of
+               Nothing -> []
+               Just a -> let Sum duration = a ^. _NoteHead . noteHeadDuration . to Sum
+                          in pure $ L.Partial (round $ 1/duration) (L.Sequential $ renderBeamed a)
+   in L.Slash "score" $ L.Sequential (content ++ styles) 
+
 renderPart p =
   let beams = (p ^.. partBeams . traverse) >>= renderBeamed
       thisPart = L.Sequential beams
@@ -119,17 +125,19 @@ renderNoteHead n =
                 where f Flam = L.Slash "grace" (0.5 *^ L.note (L.NotePitch oppPitch Nothing))
                       f Drag =
                         L.Slash1 "grace" ^+^
-                      -- TODO grace note size https://lists.gnu.org/archive/html/lilypond-user/2011-04/msg00440.html
+                      -- INFO grace note size https://lists.gnu.org/archive/html/lilypond-user/2011-04/msg00440.html
                         L.Sequential [
                             0.25 *^ L.note (L.NotePitch oppPitch Nothing),
                             0.25 *^ L.note (L.NotePitch oppPitch Nothing)
                             ]
-      checkBuzz = if n^.noteHeadBuzz
-                then L.Tremolo 4 . (0.25*^) -- adding tremolo adds noteHead value, reduce the durations to compensate
-                     -- there's a sn8:32 syntax as well (the :32), that might not add value. but im not sure
-                     -- that this library supports it
-                     -- TODO: tremolo doesn't look quite right
-                else id
+                      f Ruff =
+                        L.Slash1 "grace" ^+^
+                        L.Tuplet 3 2 (L.Sequential [
+                            0.25 *^ L.note (L.NotePitch pitch Nothing),
+                            0.25 *^ L.note (L.NotePitch oppPitch Nothing),
+                            0.25 *^ L.note (L.NotePitch oppPitch Nothing)
+                            ])
+                          
       events =
         let accF = 
               if n^.noteHeadAccent
@@ -137,6 +145,8 @@ renderNoteHead n =
                 else id
             buzzF =
               if n^.noteHeadBuzz
+                 -- TODO: tremolo doesn't look quite right
+                 -- I really just want to say "add 2 stripes to this beam"
                  then (L.TremoloS 32:)
                  else id
          in accF . buzzF $ []
@@ -154,12 +164,8 @@ renderNoteHead n =
         beamed . startTie . endTie $ thisHead
 
   in Graced embell finalNote
-       -- case embell of
          -- it seems grace notes are always stem up
-         -- Just e -> [e, finalNote]
-         -- Nothing -> [finalNote]
          -- if they aren't we need this:
-         -- any grace notes need to go before the stemDown
          -- Just e -> [L.Slash1 "stemUp", e, L.Slash1 "stemDown", finalNote]
          -- Nothing -> [L.Slash1 "stemDown", finalNote]
 
