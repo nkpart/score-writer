@@ -11,6 +11,7 @@ import           Data.Monoid
 import           Data.Ratio
 import           Score.Render
 import           Score.Types
+import           LilypondProcess
 import           System.Process
 import           Data.Sequence (Seq)
 
@@ -30,16 +31,14 @@ a24 = Score (2,4) (Just [l8]) [p1, p2, p3, p4]
         returnPart =
           [[r16 & flam, l32, l32] <> singles 4 r32, [r16 & dot, l16 & cut, r16 & flam . dot, l16 & flam . cut]
           ,triplet [r16, l16, r16 & drag] : singles 4 r32, [r16 & accent, triplet [l32, r32, r32], l16 & dot, l16 & cut . flam] ]
-          
-        ending = 
+
+        ending =
           [[r32, l32, l32, r32, l16 & dot . roll, l16 & cut], triplet [r16, l16, r16 & drag] : singles 4 r32
           ,[r8 & accent, r8 & roll], [l4 & endRoll]]
-        
 
-aTune :: IO ()
-aTune =
-  do let music =
+pmDonaldMacleanOfLewis =
            Score (6,8) (Just [l8]) [p1, p2, p3, p4]
+     where 
          p1 =
              Part (firstBeginning <> firstEnding <> firstBeginning <> secondEnding) Repeat
          firstBeginning =
@@ -75,9 +74,13 @@ aTune =
             [r8 & endRoll . dot, l8 & cut, r8],
             [l4 & flam], [ l8 ]]
 
-     writeFile "test.ly" (printScore music)
-     callCommand "lilypond test.ly"
-     callCommand "open -a Safari -g test.pdf"
+aTune = do
+     writeScorePDF "pipe-major-donald-maclean-of-lewis" pmDonaldMacleanOfLewis
+     callCommand "open -a Safari -g pipe-major-donald-maclean-of-lewis.pdf"
+
+writeScorePNG name music = runLilypond PNG name (printScore music)
+
+writeScorePDF name music = runLilypond PDF name (printScore music)
 
 tripletDotCut x = triplet [x & dot, x & cut . swapHands, x]
 
