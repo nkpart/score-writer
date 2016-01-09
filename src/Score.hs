@@ -20,8 +20,12 @@ writeScorePDF name music = runLilypond PDF name (printScore music)
 
 a24 :: Score
 a24 = Score
-  (Details "93rd at Modder River" "March" "Raymond Malcolm" Nothing)
-  (2,4) (Just [l8]) [p1, p2, p3, p4]
+  (Details "93rd at Modder River"
+           "March"
+           "Raymond Malcolm"
+           Nothing)
+  (2,4)
+  (Just [l8]) [p1, p2, p3, p4]
   where p1 = Part [[r16 & flam . accent, l32, l32, r16 & dot, l16 & flam . cut] ,[r32, l32,l32,r32,l16 & dot,l16 & cut . accent]
                   ,fromList (triplet [r16, l16, r16 & drag] : singles 4 r32) ,[r8 & roll, triplet [l16,r16,l16]]
                   ,[r16 & flam . accent . dot, l16 & cut, r16 & flam . dot, l16 & cut . flam], fromList $ singles 4 r32 <> [r16, triplet [r16 & flam, l16, r16 & accent]]
@@ -40,7 +44,12 @@ a24 = Score
           ,[r8 & accent, r8 & roll], [l4 & endRoll]]
 
 pmDonaldMacleanOfLewis =
-  Score (Details "Pipe Major Donald Maclean of Lewis" "March" "Nick Partridge" (Just "BBC Old Collegians Pipe Band")) (6,8) (Just [l8]) [p1, p2, p3, p4]
+  Score (Details "Pipe Major Donald Maclean of Lewis"
+                 "March"
+                 "Nick Partridge"
+                 (Just "BBC Old Collegians Pipe Band"))
+        (6,8)
+        (Just [l8]) [p1, p2, p3, p4]
      where
          p1 =
              Part (firstBeginning <> firstEnding <> firstBeginning <> secondEnding) Repeat
