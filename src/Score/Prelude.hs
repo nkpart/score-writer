@@ -11,9 +11,14 @@ module Score.Prelude
 
 import Score.Types as X
 import Control.Lens as X
-import Data.Monoid as X
+import Data.Semigroup as X
 import Data.Ratio
 import Data.Sequence (Seq)
+
+
+(<->) = (<>)
+
+infixl 0 <->
 
 -- | General purpose utils
 
@@ -23,7 +28,7 @@ zapN n f = elementOf _NoteHead n %~ f
 
 -- | Note constructors
 
-l1, l2, l4, l8, l16, l32, l64 :: Note
+l1, l2, l4, l8, l16, l32, l64 :: Beamed
 l1 = ln 1
 l2 = ln (1/2)
 l4 = ln (1/4)
@@ -32,7 +37,7 @@ l16 = ln (1/16)
 l32 = ln (1/32)
 l64 = ln (1/64)
 
-r1, r2, r4, r8, r16, r32, r64 :: Note
+r1, r2, r4, r8, r16, r32, r64 :: Beamed
 r1 = rn 1
 r2 = rn (1/2)
 r4 = rn (1/4)
@@ -41,12 +46,12 @@ r16 = rn (1/16)
 r32 = rn (1/32)
 r64 = rn (1/64)
 
-ln, rn :: Ratio Integer -> Note
-ln = aNote L
-rn = aNote R
+ln, rn :: Ratio Integer -> Beamed
+ln = Beamed . pure . aNote L
+rn = Beamed . pure . aNote R
 
-triplet :: Seq Note -> Note
-triplet = Tuplet (3 % 2)
+triplet :: Beamed -> Beamed
+triplet = Beamed . pure . Tuplet (3 % 2)
 
 aNote :: Hand -> Ratio Integer -> Note
 aNote h d = Note $ NoteHead h False False d False False Nothing
@@ -73,10 +78,10 @@ cut = _NoteHead . noteHeadDuration %~ (* (1/2))
 
 -- | Bit builders
 
-singles :: Int -> Note -> [Note]
+singles :: Int -> Beamed -> Beamed
 singles n _ | n < 0 = error "bow bow"
-singles 0 _ = []
-singles n x = x : singles (n-1) (x & swapHands)
+singles 0 _ = Beamed mempty
+singles n x = x <> singles (n-1) (x & swapHands)
 
 -- start l = l .~ Just True
 

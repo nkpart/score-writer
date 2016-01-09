@@ -129,7 +129,7 @@ addBeams rn =
 
 renderNote :: Note -> RenderedNote
 renderNote (Note h) = renderNoteHead h
-renderNote (Tuplet r h) = Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) (fmap renderNote h)
+renderNote (Tuplet r (Beamed h)) = Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) (fmap renderNote h)
 
 x (m, i) = maybe (S.fromList [i] )(\v -> S.fromList [v, i]) m
 

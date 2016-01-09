@@ -14,8 +14,9 @@ module Score.Types
 
 import           Control.Lens
 import           Data.Ratio
-import           Data.Sequence as S
-import           GHC.Exts      (IsList, Item, fromList, toList)
+import           Data.Semigroup
+import           Data.Sequence   as S
+import           GHC.Exts        (IsList, Item, fromList, toList)
 
 type Toggle = Maybe Bool
 
@@ -50,14 +51,17 @@ data NoteHead =
            ,_noteHeadEmbellishment :: Maybe Embellishment}
   deriving (Eq,Show)
 
-
 data Note = Note NoteHead
-          | Tuplet (Ratio Integer) (Seq Note)
+          | Tuplet (Ratio Integer) Beamed
             deriving (Eq, Show)
 
+-- TODO should be non empty
 newtype Beamed =
   Beamed (Seq Note)
   deriving (Eq,Show)
+
+instance Semigroup Beamed where
+  Beamed a <> Beamed b = Beamed (a <> b)
 
 instance IsList Beamed where
   type Item Beamed = Note
@@ -131,14 +135,17 @@ instance (p ~ (->),Functor f) => AsHand p f NoteHead where
 
 instance (p ~ (->),Applicative f) => AsHand p f Note where
   _Hand f (Note n) = Note <$> _Hand f n
-  _Hand f (Tuplet r n) = Tuplet r <$> (traverse . _Hand) f n
+  _Hand f (Tuplet r n) = Tuplet r <$> (_NoteHead . _Hand) f n
+
+instance (p ~ (->),Applicative f) => AsHand p f Beamed where
+  _Hand f (Beamed n) = Beamed <$> (traverse . _Hand) f n
 
 instance AsNoteHead p f NoteHead where
   _NoteHead = id
 
 instance Applicative f => AsNoteHead (->) f Note where
   _NoteHead f (Note h) = Note <$> f h
-  _NoteHead f (Tuplet d ns) = Tuplet d <$> (traverse . _NoteHead) f ns
+  _NoteHead f (Tuplet d ns) = Tuplet d <$> _NoteHead f ns
 
 instance (Applicative f) => AsNoteHead (->) f Beamed where
   _NoteHead = _Wrapped . traverse . _NoteHead
