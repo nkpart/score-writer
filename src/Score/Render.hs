@@ -3,10 +3,11 @@ module Score.Render where
 import           Control.Lens
 import           Control.Monad       (join)
 import qualified Data.Foldable       as F
+import           Data.Monoid ((<>))
 import qualified Data.Music.Lilypond as L
 import           Data.Ratio
+import           Data.Sequence       ((><))
 import qualified Data.Sequence       as S
-import Data.Sequence ((><))
 import           Data.VectorSpace
 import           Score.Types
 import           Text.Pretty
@@ -36,17 +37,34 @@ engraverPrefix =
 
   -- TODO anacruses, remove clef from every line, staff height bigger
   -- title/author/style
-renderScore (Score (n,m) anacrusis ps) =
-  let content = 
+renderScore (Score details (n,m) anacrusis ps) =
+  let content =
         beginScore n m ((anac ++) . F.toList . fmap renderPart $ ps)
 
       -- the {} from slash1/slash here is important
-      styles = [L.Slash1 "layout", L.Sequential $ pure (L.Slash "context" (L.Sequential [L.Slash1 "Score", L.Slash1 "consists #(bars-per-line-engraver '(4))"]))]
+      styles = [L.Slash1 "layout", L.Sequential [
+                    L.Field "indent" (L.toLiteralValue "#0")
+                   ,L.Slash "context" (L.Sequential [
+                                         L.Slash1 "Score",
+                                         L.Slash1 "consists #(bars-per-line-engraver '(4))",
+                                         L.Slash1 "omit BarNumber"
+                                         ])]]
       anac = case anacrusis of
                Nothing -> []
                Just a -> let Sum duration = a ^. _NoteHead . noteHeadDuration . to Sum
                           in pure $ L.Partial (round $ 1/duration) (L.Sequential $ renderBeamed a)
-   in L.Slash "score" $ L.Sequential (content ++ styles) 
+   in
+    L.Slash "book" $ L.Sequential [
+       L.Slash "header" $ L.Sequential (renderDetails details)
+       , L.Slash "score" $ L.Sequential (content ++ styles)
+       ]
+
+renderDetails ds = [
+    L.Field "title"  $ L.toValue (ds ^. detailsTitle)
+  , L.Field "composer"  $ L.toValue (ds ^. detailsComposer)
+  , L.Field "piece"  $ L.toValue (ds ^. detailsGenre)
+  ] <> maybe [] (pure . L.Field "opus" . L.toValue) (ds ^. detailsBand)
+  where mkField k v = L.Field k . L.toValue
 
 renderPart p =
   let beams = (p ^.. partBeams . traverse) >>= renderBeamed
@@ -63,12 +81,15 @@ beginScore n m i =
     L.New "Staff" Nothing (
       L.Slash "with" $ L.Sequential [
           L.Override "StaffSymbol.line-count" (L.toValue (1::Int))
+          -- TODO: work out why this doesn't turn on bar lines at the beginning of lines
+          -- ,L.Override "Score.BarLine.break-visibility" (L.toLiteralValue "#all-visible")
           ,L.Override "Stem.direction" (L.toValue (-1))
           ,L.Override "StemTremolo.slope" (L.toValue 0.25)
            -- ,L.Override "StemTremolo.Y-offset" (L.toValue (-0.8))
           ]
       )
-  , L.Sequential (L.Clef L.Percussion : L.Time n m :  i) ]
+  , L.Sequential ( clefOff : L.Clef L.Percussion : L.Time n m : i) ]
+  where clefOff = L.Slash1 "hide Staff.Clef"
 
 renderBeamed :: Beamed -> [L.Music]
 renderBeamed =
@@ -77,10 +98,6 @@ renderBeamed =
   . addBeams
   . fmap renderNote
   . view _Wrapped
-  -- F.toList $
-  -- case fromList $ F.toList (b ^. _Wrapped) of
-  --   Right (Bookended a as e) -> renderNote (Just True) a >< (renderNote Nothing =<< as) >< renderNote (Just False) e
-  --   Left xs -> renderNote Nothing =<< xs
 
 data RenderedNote = Graced (Maybe L.Music) L.Music
                   | Tupleted Int Int (S.Seq RenderedNote)
@@ -137,9 +154,8 @@ renderNoteHead n =
                             0.25 *^ L.note (L.NotePitch oppPitch Nothing),
                             0.25 *^ L.note (L.NotePitch oppPitch Nothing)
                             ])
-                          
       events =
-        let accF = 
+        let accF =
               if n^.noteHeadAccent
                 then (L.Articulation L.Above L.Accent:)
                 else id

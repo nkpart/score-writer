@@ -9,16 +9,19 @@ module Score where
 import           Control.Lens
 import           Data.Monoid
 import           Data.Ratio
+import           LilypondProcess
+import           Score.Prelude
 import           Score.Render
 import           Score.Types
-import           LilypondProcess
-import           System.Process
-import           Data.Sequence (Seq)
 
+writeScorePNG name music = runLilypond PNG name (printScore music)
+
+writeScorePDF name music = runLilypond PDF name (printScore music)
 
 a24 :: Score
-
-a24 = Score (2,4) (Just [l8]) [p1, p2, p3, p4]
+a24 = Score
+  (Details "93rd at Modder River" "March" "Raymond Malcolm" Nothing)
+  (2,4) (Just [l8]) [p1, p2, p3, p4]
   where p1 = Part [[r16 & flam . accent, l32, l32, r16 & dot, l16 & flam . cut] ,[r32, l32,l32,r32,l16 & dot,l16 & cut . accent]
                   ,fromList (triplet [r16, l16, r16 & drag] : singles 4 r32) ,[r8 & roll, triplet [l16,r16,l16]]
                   ,[r16 & flam . accent . dot, l16 & cut, r16 & flam . dot, l16 & cut . flam], fromList $ singles 4 r32 <> [r16, triplet [r16 & flam, l16, r16 & accent]]
@@ -37,8 +40,8 @@ a24 = Score (2,4) (Just [l8]) [p1, p2, p3, p4]
           ,[r8 & accent, r8 & roll], [l4 & endRoll]]
 
 pmDonaldMacleanOfLewis =
-           Score (6,8) (Just [l8]) [p1, p2, p3, p4]
-     where 
+  Score (Details "Pipe Major Donald Maclean of Lewis" "March" "Nick Partridge" (Just "BBC Old Collegians Pipe Band")) (6,8) (Just [l8]) [p1, p2, p3, p4]
+     where
          p1 =
              Part (firstBeginning <> firstEnding <> firstBeginning <> secondEnding) Repeat
          firstBeginning =
@@ -74,86 +77,7 @@ pmDonaldMacleanOfLewis =
             [r8 & endRoll . dot, l8 & cut, r8],
             [l4 & flam], [ l8 ]]
 
-aTune = do
-     writeScorePDF "pipe-major-donald-maclean-of-lewis" pmDonaldMacleanOfLewis
-     callCommand "open -a Safari -g pipe-major-donald-maclean-of-lewis.pdf"
-
-writeScorePNG name music = runLilypond PNG name (printScore music)
-
-writeScorePDF name music = runLilypond PDF name (printScore music)
-
 tripletDotCut x = triplet [x & dot, x & cut . swapHands, x]
 
   -- where eg = tripletDotCut l8 & zapN 0 flam
   --       wat = tripletDotCut r8 & zap [flam, roll . swapHands, endRoll]
-
--- | General purpose utils
-
-zap fs = partsOf _NoteHead %~ zipWith ($) fs
-
-zapN n f = elementOf _NoteHead n %~ f
-
--- | Note constructors
-
-l1, l2, l4, l8, l16, l32, l64 :: Note
-l1 = ln 1
-l2 = ln (1/2)
-l4 = ln (1/4)
-l8 = ln (1/8)
-l16 = ln (1/16)
-l32 = ln (1/32)
-l64 = ln (1/64)
-
-r1, r2, r4, r8, r16, r32, r64 :: Note
-r1 = rn 1
-r2 = rn (1/2)
-r4 = rn (1/4)
-r8 = rn (1/8)
-r16 = rn (1/16)
-r32 = rn (1/32)
-r64 = rn (1/64)
-
-ln, rn :: Ratio Integer -> Note
-ln = aNote L
-rn = aNote R
-
-triplet :: Seq Note -> Note
-triplet = Tuplet (3 % 2)
-
-aNote :: Hand -> Ratio Integer -> Note
-aNote h d = Note $ NoteHead h False False d False False Nothing
-
--- | Note modifiers
-
-buzz = _NoteHead . noteHeadBuzz .~ True
-
-roll = buzz . (_NoteHead . noteHeadSlurBegin .~ True)
-
-endRoll = _NoteHead . noteHeadSlurEnd .~ True
-
-flam = _NoteHead . noteHeadEmbellishment .~ Just Flam
-
-drag = _NoteHead . noteHeadEmbellishment .~ Just Drag
-
-ruff = _NoteHead . noteHeadEmbellishment .~ Just Ruff
-
-accent = _NoteHead . noteHeadAccent .~ True
-
-dot = _NoteHead . noteHeadDuration %~ (* (3/2))
-
-cut = _NoteHead . noteHeadDuration %~ (* (1/2))
-
-
--- | Bit builders
-
-singles :: Int -> Note -> [Note]
-singles n _ | n < 0 = error "bow bow"
-singles 0 _ = []
-singles n x = x : singles (n-1) (x & swapHands)
-
--- start l = l .~ Just True
-
--- end l = l .~ Just False
-
--- clear l = l .~ Nothing
-

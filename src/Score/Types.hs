@@ -78,10 +78,19 @@ data Repeat
 
 data Score =
   Score
-  { _scoreSignature :: (Integer, Integer),
+  { _scoreDetails :: Details,
+    _scoreSignature :: (Integer, Integer),
     _scoreAnacrusis :: Maybe Beamed,
     _scoreParts :: Seq Part}
   deriving (Eq,Show)
+
+data Details =
+  Details
+  { _detailsTitle :: String,
+    _detailsGenre :: String,
+    _detailsComposer :: String,
+    _detailsBand :: Maybe String
+  } deriving (Eq, Show)
 
 -- | Concrete lenses and prisms
 
@@ -92,6 +101,7 @@ makeWrapped ''Beamed
 -- makeLenses ''Phrase
 makeLenses ''Part
 makePrisms ''Repeat
+makeLenses ''Details
 --- makeXXX ''Score
 
 -- | Typeclass generalised members
@@ -138,7 +148,7 @@ instance (Applicative f) => AsNoteHead (->) f Part where
 
 instance (Applicative f) => AsNoteHead (->) f Score where
   -- TODO should this touch the anacrusis?
-  _NoteHead f (Score sig ana s) = Score sig ana <$> (traverse . _NoteHead) f s
+  _NoteHead f (Score d sig ana s) = Score d sig ana <$> (traverse . _NoteHead) f s
 
 -- | ???
 
