@@ -18,6 +18,7 @@ library
                        Score.Types
                        Score.Render
                        Score.Prelude
+                       Score.Library.BBCOCA
                        LilypondProcess
   build-depends:       base >= 4.7 && < 5
                      , lens

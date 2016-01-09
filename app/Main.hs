@@ -1,6 +1,7 @@
 module Main where
 
 import Score
+import Score.Library.BBCOCA
 import System.Process
 
 main :: IO ()

@@ -2,6 +2,7 @@ import Test.Tasty.Golden
 import Test.Tasty
 
 import Score
+import Score.Library.BBCOCA
 
 main :: IO ()
 main = defaultMain tests

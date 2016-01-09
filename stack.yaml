@@ -6,7 +6,7 @@ resolver: lts-4.0
 # Local packages, usually specified by relative directory name
 packages:
 - '.'
-- location: lilypond
+- location: 
     git: git@github.com:nkpart/lilypond.git 
     commit: 7a2d158
   extra-dep: true

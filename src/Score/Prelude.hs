@@ -1,11 +1,19 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
-module Score.Prelude where
+module Score.Prelude
+       (
+         module X,
+         module Score.Prelude,
+         (%)
+       )
 
-import Score.Types
+       where
+
+import Score.Types as X
+import Control.Lens as X
+import Data.Monoid as X
 import Data.Ratio
 import Data.Sequence (Seq)
-import Control.Lens
 
 -- | General purpose utils
 
