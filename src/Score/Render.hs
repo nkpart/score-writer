@@ -55,7 +55,7 @@ renderScore (Score details (n,m) anacrusis ps) =
                           in pure $ L.Partial (round $ 1/duration) (L.Sequential $ renderBeamed a)
    in
     L.Slash "book" $ L.Sequential [
-       L.Slash "header" $ L.Sequential (renderDetails details)
+       L.Slash "header" $ L.Sequential (renderDetails details <> [L.Field "tagline" (L.toValue "")])
        , L.Slash "score" $ L.Sequential (content ++ styles)
        ]
 
