@@ -53,6 +53,7 @@ data NoteHead =
 
 data Note = Note NoteHead
           | Tuplet (Ratio Integer) Beamed
+          | Rest (Ratio Integer)
             deriving (Eq, Show)
 
 -- TODO should be non empty
@@ -110,6 +111,8 @@ makeLenses ''Details
 
 -- | Typeclass generalised members
 
+type Duration = Ratio Integer
+
 class AsHand p f s where
   _Hand ::
     Optic' p f s Hand
@@ -135,16 +138,32 @@ instance (p ~ (->),Functor f) => AsHand p f NoteHead where
 
 instance (p ~ (->),Applicative f) => AsHand p f Note where
   _Hand f (Note n) = Note <$> _Hand f n
+  _Hand _ (Rest n) = pure (Rest n)
   _Hand f (Tuplet r n) = Tuplet r <$> (_NoteHead . _Hand) f n
 
 instance (p ~ (->),Applicative f) => AsHand p f Beamed where
   _Hand f (Beamed n) = Beamed <$> (traverse . _Hand) f n
+
+instance AsDuration p f Duration where
+  _Duration = id
+
+instance (p ~ (->),Functor f) => AsDuration p f NoteHead where
+  _Duration = noteHeadDuration
+
+instance (p ~ (->),Applicative f) => AsDuration p f Note where
+  _Duration f (Note n) = Note <$> _Duration f n
+  _Duration f (Rest n) = Rest <$> f n
+  _Duration f (Tuplet r n) = Tuplet r <$> _Duration f n
+
+instance (p ~ (->),Applicative f) => AsDuration p f Beamed where
+  _Duration f (Beamed n) = Beamed <$> (traverse . _Duration) f n
 
 instance AsNoteHead p f NoteHead where
   _NoteHead = id
 
 instance Applicative f => AsNoteHead (->) f Note where
   _NoteHead f (Note h) = Note <$> f h
+  _NoteHead _ (Rest n) = pure (Rest n)
   _NoteHead f (Tuplet d ns) = Tuplet d <$> _NoteHead f ns
 
 instance (Applicative f) => AsNoteHead (->) f Beamed where

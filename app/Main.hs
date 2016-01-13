@@ -31,18 +31,23 @@ main = do
        watchChangesChan mgr chan file
        throwLeft_ =<< runInterpreter (hintMe chan value)
 
+watchChangesChan :: WatchManager -> EventChannel -> FilePath -> IO ()
 watchChangesChan mgr chan file =
   do absFile <- canonicalizePath file
      _ <- watchDirChan mgr (takeDirectory absFile) (changesTo absFile) chan
      return ()
 
+changesTo :: FilePath -> Event -> Bool
 changesTo f (Modified x _) = x == f
 changesTo _ _ = False
 
+throwLeft :: Either InterpreterError a -> IO a
 throwLeft = either throwIO return
 
+throwLeft_ :: Either InterpreterError b -> IO ()
 throwLeft_ = fmap (const ()) . throwLeft
 
+hintMe :: MonadInterpreter m => Chan Event -> String -> m b
 hintMe chan valueName =
   forever $
   do Modified f _ <- liftIO (readChan chan)
@@ -56,6 +61,7 @@ hintMe chan valueName =
 printError :: InterpreterError -> IO ()
 printError = print
 
+viewScore :: Score -> IO ()
 viewScore score =
   do writeScorePDF "wizzle" score
      callCommand $ "open -a Safari -g wizzle.pdf"

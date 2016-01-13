@@ -1,19 +1,21 @@
-module Score.Render where
+module Score.Render (
+  printScore
+  ) where
 
 import           Control.Lens
-import           Control.Monad       (join)
 import qualified Data.Foldable       as F
 import           Data.Monoid ((<>))
 import qualified Data.Music.Lilypond as L
 import           Data.Ratio
-import           Data.Sequence       ((><))
 import qualified Data.Sequence       as S
 import           Data.VectorSpace
 import           Score.Types
 import           Text.Pretty
 
+printScore :: Score -> String
 printScore music = (mappend engraverPrefix $ runPrinter . pretty . renderScore $ music)
 
+engraverPrefix :: String
 engraverPrefix =
            "\
 \#(define ((bars-per-line-engraver bar-list) context) \n\
@@ -37,9 +39,10 @@ engraverPrefix =
 
   -- TODO anacruses, remove clef from every line, staff height bigger
   -- title/author/style
+renderScore :: Score -> L.Music
 renderScore (Score details (n,m) anacrusis ps) =
   let content =
-        beginScore n m ((anac ++) . F.toList . fmap renderPart $ ps)
+        beginScore (n, m) ((anac ++) . F.toList . fmap renderPart $ ps)
 
       -- the {} from slash1/slash here is important
       styles = [L.Slash1 "layout", L.Sequential [
@@ -48,14 +51,14 @@ renderScore (Score details (n,m) anacrusis ps) =
                                          L.Slash1 "Score",
                                          L.Slash1 "consists #(bars-per-line-engraver '(4))",
                                          L.Slash1 "omit BarNumber",
-                                         L.Override "GraceSpacing.spacing-increment" (L.toValue $ 0.2),
+                                         L.Override "GraceSpacing.spacing-increment" (L.toValue (0.2::Double)),
                                          L.Field "proportionalNotationDuration" (L.toLiteralValue "#(ly:make-moment 1/8)")
           -- ,L.Override "SpacingSpanner.strict-grace-spacing" (L.toLiteralValue "##t")
           -- ,L.Override "SpacingSpanner.strict-note-spacing" (L.toLiteralValue "##t")
                                          ])]]
       anac = case anacrusis of
                Nothing -> []
-               Just a -> let Sum duration = a ^. _NoteHead . noteHeadDuration . to Sum
+               Just a -> let Sum duration = a ^. _Duration . to Sum
                           in pure $ L.Partial (round $ 1/duration) (L.Sequential $ renderBeamed a)
    in
     L.Slash "book" $ L.Sequential [
@@ -63,13 +66,14 @@ renderScore (Score details (n,m) anacrusis ps) =
        , L.Slash "score" $ L.Sequential (content ++ styles)
        ]
 
+renderDetails :: Details -> [L.Music]
 renderDetails ds = [
     L.Field "title"  $ L.toValue (ds ^. detailsTitle)
   , L.Field "composer"  $ L.toValue (ds ^. detailsComposer)
   , L.Field "piece"  $ L.toValue (ds ^. detailsGenre)
   ] <> maybe [] (pure . L.Field "opus" . L.toValue) (ds ^. detailsBand)
-  where mkField k v = L.Field k . L.toValue
 
+renderPart :: Part -> L.Music
 renderPart p =
   let beams = (p ^.. partBeams . traverse) >>= renderBeamed
       thisPart = L.Sequential beams
@@ -80,15 +84,16 @@ renderPart p =
       Repeat -> L.Repeat False 2 thisPart Nothing
       Return (firstTime, secondTime) -> L.Repeat False 2 thisPart (Just (r firstTime, r secondTime))
 
-beginScore n m i =
+beginScore :: (Integer, Integer) -> [L.Music] -> [L.Music]
+beginScore (n, m) i =
   [
     L.New "Staff" Nothing (
       L.Slash "with" $ L.Sequential [
           L.Override "StaffSymbol.line-count" (L.toValue (1::Int))
           -- TODO: work out why this doesn't turn on bar lines at the beginning of lines
           -- ,L.Override "Score.BarLine.break-visibility" (L.toLiteralValue "#all-visible")
-          ,L.Override "Stem.direction" (L.toValue (-1))
-          ,L.Override "StemTremolo.slope" (L.toValue 0.25)
+          ,L.Override "Stem.direction" (L.toValue (-1::Int))
+          ,L.Override "StemTremolo.slope" (L.toValue (0.25::Double))
            -- ,L.Override "StemTremolo.Y-offset" (L.toValue (-0.8))
           ]
       )
@@ -106,18 +111,21 @@ renderBeamed =
 data RenderedNote = Graced (Maybe L.Music) L.Music
                   | Tupleted Int Int (S.Seq RenderedNote)
 
+firstMusic :: Traversal' RenderedNote L.Music 
 firstMusic f (Graced mb n) = Graced mb <$> f n
 firstMusic f (Tupleted n d xs) = case F.toList xs of
                                    [] -> pure (Tupleted n d xs)
-                                   (x:xs) -> fmap (\x' -> Tupleted n d $ S.fromList (x':xs)) (firstMusic f x)
+                                   (h:t) -> fmap (\x' -> Tupleted n d $ S.fromList (x':t)) (firstMusic f h)
 
+lastMusic :: Traversal' RenderedNote L.Music 
 lastMusic f (Graced mb n) = Graced mb <$> f n
 lastMusic f (Tupleted n d xs) = case F.toList xs of
                                    [] -> pure (Tupleted n d xs)
-                                   xs@(_:_) ->
-                                     let (x:rest) = reverse xs
-                                      in fmap (\x' -> Tupleted n d $ S.fromList $ reverse (x':rest)) (lastMusic f x)
+                                   xs'@(_:_) ->
+                                     let (h:rest) = reverse xs'
+                                      in fmap (\x' -> Tupleted n d $ S.fromList $ reverse (x':rest)) (lastMusic f h)
 
+buildMusic :: S.Seq RenderedNote -> S.Seq L.Music
 buildMusic rns = rns >>= f
   where f (Graced mb l) = maybe (pure l) (\v -> S.fromList [v,l]) mb
         f (Tupleted n d more) =
@@ -133,9 +141,8 @@ addBeams rn =
 
 renderNote :: Note -> RenderedNote
 renderNote (Note h) = renderNoteHead h
+renderNote (Rest n) = Graced Nothing (L.Rest (Just $ L.Duration n) [])
 renderNote (Tuplet r (Beamed h)) = Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) (fmap renderNote h)
-
-x (m, i) = maybe (S.fromList [i] )(\v -> S.fromList [v, i]) m
 
 -- TODO: test by building pngs and comparing to known good versions
 renderNoteHead :: NoteHead -> RenderedNote -- (Maybe L.Music, L.Music)

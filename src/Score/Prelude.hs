@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# OPTIONS_GHC -Wwarn #-}
 module Score.Prelude
        (
          module X,
@@ -13,8 +14,6 @@ import Score.Types as X
 import Control.Lens as X
 import Data.Semigroup as X
 import Data.Ratio
-import Data.Sequence (Seq)
-
 
 (<->) = (<>)
 
@@ -27,7 +26,6 @@ zap fs = partsOf _NoteHead %~ \vs -> zipWith (\v f -> f v) vs fs
 zapN n f = elementOf _NoteHead n %~ f
 
 -- | Note constructors
-
 l1, l2, l4, l8, l16, l32, l64 :: Beamed
 l1 = ln 1
 l2 = ln (1/2)
@@ -46,9 +44,19 @@ r16 = rn (1/16)
 r32 = rn (1/32)
 r64 = rn (1/64)
 
-ln, rn :: Ratio Integer -> Beamed
+rest1, rest2, rest4, rest8, rest16, rest32, rest64 :: Beamed
+rest1 = restn 1
+rest2 = restn (1/2)
+rest4 = restn (1/4)
+rest8 = restn (1/8)
+rest16 = restn (1/16)
+rest32 = restn (1/32)
+rest64 = restn (1/64)
+
+ln, rn, restn :: Ratio Integer -> Beamed
 ln = Beamed . pure . aNote L
 rn = Beamed . pure . aNote R
+restn = Beamed . pure . Rest
 
 triplet :: Beamed -> Beamed
 triplet = Beamed . pure . Tuplet (3 % 2)
