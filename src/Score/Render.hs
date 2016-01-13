@@ -47,7 +47,11 @@ renderScore (Score details (n,m) anacrusis ps) =
                    ,L.Slash "context" (L.Sequential [
                                          L.Slash1 "Score",
                                          L.Slash1 "consists #(bars-per-line-engraver '(4))",
-                                         L.Slash1 "omit BarNumber"
+                                         L.Slash1 "omit BarNumber",
+                                         L.Override "GraceSpacing.spacing-increment" (L.toValue $ 0.2),
+                                         L.Field "proportionalNotationDuration" (L.toLiteralValue "#(ly:make-moment 1/8)")
+          -- ,L.Override "SpacingSpanner.strict-grace-spacing" (L.toLiteralValue "##t")
+          -- ,L.Override "SpacingSpanner.strict-note-spacing" (L.toLiteralValue "##t")
                                          ])]]
       anac = case anacrusis of
                Nothing -> []
