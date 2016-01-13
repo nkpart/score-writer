@@ -1,1 +1,1 @@
-stack build && stack exec score-writer
+stack build && stack exec score-writer -- $*
