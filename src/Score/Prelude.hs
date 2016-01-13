@@ -22,7 +22,7 @@ infixl 0 <->
 
 -- | General purpose utils
 
-zap fs = partsOf _NoteHead %~ zipWith ($) fs
+zap fs = partsOf _NoteHead %~ \vs -> zipWith (\v f -> f v) vs fs
 
 zapN n f = elementOf _NoteHead n %~ f
 
