@@ -173,7 +173,7 @@ renderNoteHead n =
             buzzF =
               if n^.noteHeadBuzz
                  -- TODO: tremolo doesn't look quite right
-                 -- I really just want to say "add 2 stripes to this beam"
+                 -- I really just want to say "add 2 stripes to this stem"
                  then (L.TremoloS 32:)
                  else id
          in accF . buzzF $ []
