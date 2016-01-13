@@ -80,9 +80,9 @@ ruff = _NoteHead . noteHeadEmbellishment .~ Just Ruff
 
 accent = _NoteHead . noteHeadAccent .~ True
 
-dot = _NoteHead . noteHeadDuration %~ (* (3/2))
+dot = _Duration %~ (* (3/2))
 
-cut = _NoteHead . noteHeadDuration %~ (* (1/2))
+cut = _Duration %~ (* (1/2))
 
 -- | Bit builders
 
