@@ -97,19 +97,28 @@ beginScore signature i =
            -- ,L.Override "StemTremolo.Y-offset" (L.toValue (-0.8))
           ]
       )
-  , L.Sequential ( [clefOff, L.Clef L.Percussion] <> beamStuff <> beginTime signature <> i) ]
+  , L.Sequential ( [clefOff, L.Clef L.Percussion] <> beginTime signature <> i) ]
   where clefOff = L.Slash1 "hide Staff.Clef"
-        beamStuff = [beamThing] --, b0 ] --, b1, b2]
-        beamThing = L.Set "strictBeatBeaming" (L.toLiteralValue "##t")
-        _b0 = L.Set "subdivideBeams" $ L.toLiteralValue "##t"
-        -- TODO this should be determined by the time signature
-        -- For 6/8s, jigs, maybe strathspeys, I think it needs to be 1/6 or 1/12, and nfi what the beat structure
-        -- is. Might need a rendering test on this once it's right
-        _b1 = L.Set "baseMoment" $ L.toLiteralValue "#(ly:make-moment 1/8)"
-        _b2 = L.Set "beatStructure" $ L.toLiteralValue "#'(2 2 2 2)"
+
+setMomentAndStructure :: Integer -> [Integer] -> [L.Music]
+setMomentAndStructure moment momentGroups =
+  let mm = "#(ly:make-moment 1/" <> show moment <> ")"
+      structure = unwords (map show momentGroups)
+   in [L.Set "baseMoment" $ L.toLiteralValue mm,
+       L.Set "beatStructure" $ L.toLiteralValue $ "#'(" <> structure <> ")"]
 
 beginTime :: Signature -> [L.Music]
-beginTime (Signature n m) = pure $ L.Time n m
+beginTime sig@(Signature n m) = beamStuff <> [L.Time n m]
+  where
+        beamStuff = [L.Set "strictBeatBeaming" (L.toLiteralValue "##t"),
+                     L.Set "subdivideBeams" $ L.toLiteralValue "##t"] <> _bx
+        _bx = case sig of
+                -- TODO: Flesh out more signatures
+                -- TODO: rendering test of beaming in strathspeys, jigs, 3/4s, etc.
+                Signature 2 4 -> setMomentAndStructure 8 [2,2,2,2]
+                -- TODO what does the 6 here even mean.
+                Signature 6 8 -> setMomentAndStructure 6 [3, 3]
+                _ -> error "Unknown signature"
 
 renderBeamed :: Beamed -> [L.Music]
 renderBeamed =
