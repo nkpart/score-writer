@@ -40,9 +40,9 @@ engraverPrefix =
   -- TODO anacruses, remove clef from every line, staff height bigger
   -- title/author/style
 renderScore :: Score -> L.Music
-renderScore (Score details (n,m) anacrusis ps) =
+renderScore (Score details signature anacrusis ps) =
   let content =
-        beginScore (n, m) ((anac ++) . F.toList . fmap renderPart $ ps)
+        beginScore signature ((anac ++) . F.toList . fmap renderPart $ ps)
 
       -- the {} from slash1/slash here is important
       styles = [L.Slash1 "layout", L.Sequential [
@@ -84,8 +84,8 @@ renderPart p =
       Repeat -> L.Repeat False 2 thisPart Nothing
       Return (firstTime, secondTime) -> L.Repeat False 2 thisPart (Just (r firstTime, r secondTime))
 
-beginScore :: (Integer, Integer) -> [L.Music] -> [L.Music]
-beginScore (n, m) i =
+beginScore :: Signature -> [L.Music] -> [L.Music]
+beginScore signature i =
   [
     L.New "Staff" Nothing (
       L.Slash "with" $ L.Sequential [
@@ -97,8 +97,19 @@ beginScore (n, m) i =
            -- ,L.Override "StemTremolo.Y-offset" (L.toValue (-0.8))
           ]
       )
-  , L.Sequential ( clefOff : L.Clef L.Percussion : L.Time n m : i) ]
+  , L.Sequential ( [clefOff, L.Clef L.Percussion] <> beamStuff <> beginTime signature <> i) ]
   where clefOff = L.Slash1 "hide Staff.Clef"
+        beamStuff = [beamThing] --, b0 ] --, b1, b2]
+        beamThing = L.Set "strictBeatBeaming" (L.toLiteralValue "##t")
+        _b0 = L.Set "subdivideBeams" $ L.toLiteralValue "##t"
+        -- TODO this should be determined by the time signature
+        -- For 6/8s, jigs, maybe strathspeys, I think it needs to be 1/6 or 1/12, and nfi what the beat structure
+        -- is. Might need a rendering test on this once it's right
+        _b1 = L.Set "baseMoment" $ L.toLiteralValue "#(ly:make-moment 1/8)"
+        _b2 = L.Set "beatStructure" $ L.toLiteralValue "#'(2 2 2 2)"
+
+beginTime :: Signature -> [L.Music]
+beginTime (Signature n m) = pure $ L.Time n m
 
 renderBeamed :: Beamed -> [L.Music]
 renderBeamed =

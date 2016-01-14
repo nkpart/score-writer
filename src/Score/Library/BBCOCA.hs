@@ -14,7 +14,7 @@ pmDonaldMacleanOfLewis =
                  "March"
                  "Nick Partridge"
                  (Just "BBC Old Collegians Pipe Band"))
-        (6,8)
+        (Signature 6 8)
         (Just l8) [p1, p2, p3, p4]
      where
          p1 = Part (firstBeginning <> firstEnding <> firstBeginning <> secondEnding) Repeat

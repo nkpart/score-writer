@@ -81,10 +81,13 @@ data Repeat
   | Return (Seq Beamed, Seq Beamed)
   deriving (Eq,Show)
 
+
+data Signature = Signature Integer Integer deriving (Eq, Show)
+
 data Score =
   Score
   { _scoreDetails :: Details,
-    _scoreSignature :: (Integer, Integer),
+    _scoreSignature :: Signature,
     _scoreAnacrusis :: Maybe Beamed,
     _scoreParts :: Seq Part}
   deriving (Eq,Show)
@@ -107,7 +110,7 @@ makeWrapped ''Beamed
 makeLenses ''Part
 makePrisms ''Repeat
 makeLenses ''Details
---- makeXXX ''Score
+makeLenses ''Score
 
 -- | Typeclass generalised members
 
@@ -129,6 +132,9 @@ class AsNoteHead p f s where
 class AsBeamed p f s where
   _Beamed ::
     Optic' p f s Beamed
+
+class AsSignature p f s where
+  _Signature :: Optic' p f s Signature
 
 instance AsHand p f Hand where
   _Hand = id
@@ -175,6 +181,12 @@ instance (Applicative f) => AsNoteHead (->) f Part where
 instance (Applicative f) => AsNoteHead (->) f Score where
   -- TODO should this touch the anacrusis?
   _NoteHead f (Score d sig ana s) = Score d sig ana <$> (traverse . _NoteHead) f s
+
+instance AsSignature p f Signature where
+  _Signature = id
+
+instance (p ~ (->), Functor f) => AsSignature p f Score where
+  _Signature = scoreSignature
 
 -- | ???
 
