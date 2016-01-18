@@ -58,6 +58,7 @@ data Note = Note NoteHead
 
 -- TODO should be non empty
 newtype Beamed =
+  -- TODO: need to interleave modifications to the next note
   Beamed (Seq Note)
   deriving (Eq,Show)
 
@@ -119,7 +120,6 @@ type Duration = Ratio Integer
 class AsHand p f s where
   _Hand ::
     Optic' p f s Hand
-  -- Optic is lens (set and get), iso (to and from), prism (0 or 1), or traversal (0 - many), or fold (get many)
 
 class AsDuration p f s where
   _Duration ::

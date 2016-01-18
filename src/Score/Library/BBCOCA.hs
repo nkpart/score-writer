@@ -22,8 +22,6 @@ pmDonaldMacleanOfLewis =
                   [r8&flam.dot <-> r8&roll.cut <-> r8&endRoll , l4&flam, r8&roll
                   ,triplet (l8 & accent.endRoll <-> r8 <-> l8) <-> r8 & flam , l8 & flam.dot <-> r8 & cut <-> l8]
 
-         -- a = [[r8&flam.dot, r8&roll.cut, r8&endRoll], [l4&flam], [r8&roll]]
-
          p2 =
            let beginning =
                  [r4 & roll. dot, r4 & endRoll, r8 & roll,

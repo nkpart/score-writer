@@ -11,9 +11,11 @@ module Score.Prelude
        where
 
 import Score.Types as X
-import Control.Lens as X
+import Control.Lens as X hiding (para)
 import Data.Semigroup as X
 import Data.Ratio
+import Control.Monad.Writer hiding ((<>))
+import Data.Sequence hiding (zipWith)
 
 (<->) = (<>)
 
@@ -91,8 +93,39 @@ singles n _ | n < 0 = error "bow bow"
 singles 0 _ = Beamed mempty
 singles n x = x <> singles (n-1) (x & swapHands)
 
--- start l = l .~ Just True
+h2h startNote fs = singles (Prelude.length fs) startNote & zap fs
 
--- end l = l .~ Just False
+dbl startNote fs = foldl1 (<->) (Prelude.take (Prelude.length fs) $ cycle [startNote, startNote, swapHands startNote, swapHands startNote]) & zap fs
 
--- clear l = l .~ Nothing
+para x = x <-> swapHands x <-> x <-> x
+
+-- | DSL
+
+type PartM a = Writer (Endo Part) a
+
+writeF :: (Part -> Part) -> PartM ()
+writeF f = tell $ Endo f
+
+buildPart :: PartM a -> Part
+buildPart ma = appEndo (execWriter ma) (Part mempty NoRepeat)
+
+bars :: Seq Beamed -> PartM ()
+bars bs = writeF (partBeams %~ (\x -> bs <> x))
+
+firstTime :: Seq Beamed -> PartM ()
+firstTime x = writeF (partRepeat %~ f)
+  where f NoRepeat = Return (x, mempty)
+        f Repeat = Return (x, mempty)
+        f (Return (p,q)) = Return (p <> x, q)
+
+secondTime :: Seq Beamed -> PartM ()
+secondTime x = writeF (partRepeat %~ f)
+  where f NoRepeat = Return (mempty, x)
+        f Repeat = Return (mempty, x)
+        f (Return (p,q)) = Return (p, q <> x)
+
+thenRepeat :: PartM ()
+thenRepeat = writeF (partRepeat .~ Repeat)
+
+noRepeat :: PartM ()
+noRepeat = writeF (partRepeat .~ NoRepeat)
