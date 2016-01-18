@@ -37,7 +37,7 @@ engraverPrefix =
 \                           (set! total (+ total (car working-copy))))))))))))\n\
 \\n"
 
-  -- TODO anacruses, remove clef from every line, staff height bigger
+  -- TODO staff height bigger, grace notes smaller
   -- title/author/style
 renderScore :: Score -> L.Music
 renderScore (Score details signature anacrusis ps) =
@@ -165,7 +165,7 @@ renderNote (Rest n) = Graced Nothing (L.Rest (Just $ L.Duration n) [])
 renderNote (Tuplet r (Beamed h)) = Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) (fmap renderNote h)
 
 -- TODO: test by building pngs and comparing to known good versions
-renderNoteHead :: NoteHead -> RenderedNote -- (Maybe L.Music, L.Music)
+renderNoteHead :: NoteHead -> RenderedNote
 renderNoteHead n =
   let pitch = hand leftPitch rightPitch (n ^. noteHeadHand)
       oppPitch = hand leftPitch rightPitch (swapHands $ n ^. noteHeadHand)
