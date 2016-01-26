@@ -1,9 +1,3 @@
-{-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE FlexibleInstances         #-}
-{-# LANGUAGE MultiParamTypeClasses     #-}
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE OverloadedLists           #-}
-{-# LANGUAGE TypeFamilies              #-}
 module Score where
 
 import           LilypondProcess

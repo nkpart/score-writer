@@ -25,6 +25,7 @@ library
                      , containers
                      , lilypond
                      , mtl
+                     , transformers
                      , process
                      , prettify
                      , semigroups

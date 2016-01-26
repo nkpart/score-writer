@@ -8,15 +8,14 @@
 module Score.Types
        (
          module Score.Types
-       , GHC.Exts.fromList
        )
        where
 
 import           Control.Lens
 import           Data.Ratio
 import           Data.Semigroup
+import Data.Foldable (foldl')
 import           Data.Sequence   as S
-import           GHC.Exts        (IsList, Item, fromList, toList)
 
 type Toggle = Maybe Bool
 
@@ -52,36 +51,32 @@ data NoteHead =
   deriving (Eq,Show)
 
 data Note = Note NoteHead
-          | Tuplet (Ratio Integer) Beamed
+          | Tuplet (Ratio Integer) (Seq Note)
           | Rest (Ratio Integer)
             deriving (Eq, Show)
 
+
+data NoteMod = EndRoll deriving (Eq, Show)
+
 -- TODO should be non empty
-newtype Beamed =
-  -- TODO: need to interleave modifications to the next note
-  Beamed (Seq Note)
+data Beamed =
+  Beamed {_beamedNotes :: Seq Note
+         ,_beamedMods :: [NoteMod]}
   deriving (Eq,Show)
 
-instance Semigroup Beamed where
-  Beamed a <> Beamed b = Beamed (a <> b)
-
-instance IsList Beamed where
-  type Item Beamed = Note
-  fromList = Beamed . S.fromList
-  toList (Beamed b) = toList b
+beam :: Note -> Beamed
+beam = flip Beamed mempty . pure
 
 data Part =
-  Part {
-        _partBeams :: Seq Beamed
+  Part {_partBeams :: Seq Beamed
        ,_partRepeat :: Repeat}
   deriving (Eq,Show)
 
 data Repeat
   = NoRepeat
   | Repeat
-  | Return (Seq Beamed, Seq Beamed)
+  | Return (Seq Beamed,Seq Beamed)
   deriving (Eq,Show)
-
 
 data Signature = Signature Integer Integer deriving (Eq, Show)
 
@@ -106,7 +101,7 @@ data Details =
 makePrisms ''Hand
 makeLenses ''NoteHead
 makePrisms ''Note
-makeWrapped ''Beamed
+makeLenses ''Beamed
 -- makeLenses ''Phrase
 makeLenses ''Part
 makePrisms ''Repeat
@@ -145,10 +140,10 @@ instance (p ~ (->),Functor f) => AsHand p f NoteHead where
 instance (p ~ (->),Applicative f) => AsHand p f Note where
   _Hand f (Note n) = Note <$> _Hand f n
   _Hand _ (Rest n) = pure (Rest n)
-  _Hand f (Tuplet r n) = Tuplet r <$> (_NoteHead . _Hand) f n
+  _Hand f (Tuplet r n) = Tuplet r <$> (traverse . _NoteHead . _Hand) f n
 
 instance (p ~ (->),Applicative f) => AsHand p f Beamed where
-  _Hand f (Beamed n) = Beamed <$> (traverse . _Hand) f n
+  _Hand f (Beamed n m) = Beamed <$> (traverse . _Hand) f n <*> pure m
 
 instance AsDuration p f Duration where
   _Duration = id
@@ -159,10 +154,10 @@ instance (p ~ (->),Functor f) => AsDuration p f NoteHead where
 instance (p ~ (->),Applicative f) => AsDuration p f Note where
   _Duration f (Note n) = Note <$> _Duration f n
   _Duration f (Rest n) = Rest <$> f n
-  _Duration f (Tuplet r n) = Tuplet r <$> _Duration f n
+  _Duration f (Tuplet r n) = Tuplet r <$> (traverse . _Duration) f n
 
 instance (p ~ (->),Applicative f) => AsDuration p f Beamed where
-  _Duration f (Beamed n) = Beamed <$> (traverse . _Duration) f n
+  _Duration f (Beamed n m) = Beamed <$> (traverse . _Duration) f n <*> pure m
 
 instance AsNoteHead p f NoteHead where
   _NoteHead = id
@@ -170,10 +165,10 @@ instance AsNoteHead p f NoteHead where
 instance Applicative f => AsNoteHead (->) f Note where
   _NoteHead f (Note h) = Note <$> f h
   _NoteHead _ (Rest n) = pure (Rest n)
-  _NoteHead f (Tuplet d ns) = Tuplet d <$> _NoteHead f ns
+  _NoteHead f (Tuplet d ns) = Tuplet d <$> (traverse . _NoteHead) f ns
 
 instance (Applicative f) => AsNoteHead (->) f Beamed where
-  _NoteHead = _Wrapped . traverse . _NoteHead
+  _NoteHead = beamedNotes . traverse . _NoteHead
 
 instance (Applicative f) => AsNoteHead (->) f Part where
   _NoteHead f (Part ph rep) = Part <$> (traverse . _NoteHead) f ph <*> pure rep
@@ -200,3 +195,19 @@ _swapH = iso swapH swapH
 swapHands :: AsHand (->) Identity s
           => s -> s
 swapHands = _Hand %~ swapH
+
+applyMods :: [NoteMod] -> NoteHead -> NoteHead
+applyMods xs a =
+  foldl' (\h EndRoll -> h & noteHeadSlurEnd .~ True) a xs
+
+-- TODO: this needs a good test
+instance Semigroup Beamed where
+  Beamed a p <> Beamed b q =
+    let noNotesOnRight = nullOf (traverse . _NoteHead) b
+     in if noNotesOnRight
+           then Beamed (a <> b) (p <> q)
+           else Beamed (a <> (b & elementOf (traverse . _NoteHead) 0 %~ applyMods p)) q
+
+     -- in if nullOf (traverse . _NoteHead) notes
+     --       then Beamed notes (p <> q)
+     --       else Beamed (notes & elementOf (traverse . _NoteHead) 0 %~ applyMods p) q

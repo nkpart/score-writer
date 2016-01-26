@@ -1,10 +1,12 @@
+{-# LANGUAGE FlexibleContexts #-}
 module Score.Render (
   printScore
   ) where
 
 import           Control.Lens
 import qualified Data.Foldable       as F
-import           Data.Monoid ((<>))
+import Control.Monad.State.Strict
+import           Data.Semigroup ((<>))
 import qualified Data.Music.Lilypond as L
 import           Data.Ratio
 import qualified Data.Sequence       as S
@@ -42,7 +44,10 @@ engraverPrefix =
 renderScore :: Score -> L.Music
 renderScore (Score details signature anacrusis ps) =
   let content =
-        beginScore signature ((anac ++) . F.toList . fmap renderPart $ ps)
+        flip evalState [] $
+        do anac <- renderAnacrusis anacrusis
+           bs <- traverse renderPart ps
+           pure $! beginScore signature ((anac ++) . F.toList $ bs)
 
       -- the {} from slash1/slash here is important
       styles = [L.Slash1 "layout", L.Sequential [
@@ -56,15 +61,20 @@ renderScore (Score details signature anacrusis ps) =
           -- ,L.Override "SpacingSpanner.strict-grace-spacing" (L.toLiteralValue "##t")
           -- ,L.Override "SpacingSpanner.strict-note-spacing" (L.toLiteralValue "##t")
                                          ])]]
-      anac = case anacrusis of
-               Nothing -> []
-               Just a -> let Sum duration = a ^. _Duration . to Sum
-                          in pure $ L.Partial (round $ 1/duration) (L.Sequential $ renderBeamed a)
    in
     L.Slash "book" $ L.Sequential [
        L.Slash "header" $ L.Sequential (renderDetails details <> [L.Field "tagline" (L.toValue "")])
        , L.Slash "score" $ L.Sequential (content ++ styles)
        ]
+
+renderAnacrusis :: Maybe Beamed -> State [NoteMod] [L.Music]
+renderAnacrusis anacrusis =
+    case anacrusis of
+      Nothing -> pure []
+      Just a ->
+        do let Sum duration = a ^. _Duration . to Sum
+           bs <- renderManyBeameds (pure a)
+           pure $! [ L.Partial (round $ 1/duration) (L.Sequential bs) ]
 
 renderDetails :: Details -> [L.Music]
 renderDetails ds = [
@@ -73,16 +83,25 @@ renderDetails ds = [
   , L.Field "piece"  $ L.toValue (ds ^. detailsGenre)
   ] <> maybe [] (pure . L.Field "opus" . L.toValue) (ds ^. detailsBand)
 
-renderPart :: Part -> L.Music
+renderPart :: Part -> State [NoteMod] L.Music
 renderPart p =
-  let beams = (p ^.. partBeams . traverse) >>= renderBeamed
-      thisPart = L.Sequential beams
-      r = L.Sequential . (=<<) renderBeamed . F.toList
-   in
-    case p ^. partRepeat of
-      NoRepeat -> thisPart
-      Repeat -> L.Repeat False 2 thisPart Nothing
-      Return (firstTime, secondTime) -> L.Repeat False 2 thisPart (Just (r firstTime, r secondTime))
+  do beams <- renderManyBeameds (p ^.. partBeams . traverse)
+     let thisPart = L.Sequential beams
+         r = fmap L.Sequential . renderManyBeameds . F.toList
+     case p ^. partRepeat of
+       NoRepeat -> pure thisPart
+       Repeat -> pure $ L.Repeat False 2 thisPart Nothing
+       Return (firstTime, secondTime) ->
+         do ft <- restoring (r firstTime)
+            st <- r secondTime
+            pure $! L.Repeat False 2 thisPart (Just (ft, st))
+
+restoring :: State a b -> State a b
+restoring ma =
+  do s <- get
+     v <- ma
+     put s
+     return v
 
 beginScore :: Signature -> [L.Music] -> [L.Music]
 beginScore signature i =
@@ -120,24 +139,36 @@ beginTime sig@(Signature n m) = beamStuff <> [L.Time n m]
                 Signature 6 8 -> setMomentAndStructure 6 [3, 3]
                 _ -> error "Unknown signature"
 
-renderBeamed :: Beamed -> [L.Music]
+renderManyBeameds :: [Beamed] -> State [NoteMod] [L.Music]
+renderManyBeameds bs =
+  join <$> traverse f bs
+  where f b = do notes <- resolveMods b
+                 return $! renderBeamed notes
+
+resolveMods :: Beamed -> State [NoteMod] (S.Seq Note)
+resolveMods b =
+          do mods <- get
+             let Beamed notes leftoverMods = Beamed mempty mods <> b
+             put leftoverMods
+             return notes
+
+renderBeamed :: S.Seq Note -> [L.Music]
 renderBeamed =
     F.toList
   . buildMusic
   . addBeams
   . fmap renderNote
-  . view _Wrapped
 
 data RenderedNote = Graced (Maybe L.Music) L.Music
                   | Tupleted Int Int (S.Seq RenderedNote)
 
-firstMusic :: Traversal' RenderedNote L.Music 
+firstMusic :: Traversal' RenderedNote L.Music
 firstMusic f (Graced mb n) = Graced mb <$> f n
 firstMusic f (Tupleted n d xs) = case F.toList xs of
                                    [] -> pure (Tupleted n d xs)
                                    (h:t) -> fmap (\x' -> Tupleted n d $ S.fromList (x':t)) (firstMusic f h)
 
-lastMusic :: Traversal' RenderedNote L.Music 
+lastMusic :: Traversal' RenderedNote L.Music
 lastMusic f (Graced mb n) = Graced mb <$> f n
 lastMusic f (Tupleted n d xs) = case F.toList xs of
                                    [] -> pure (Tupleted n d xs)
@@ -162,9 +193,8 @@ addBeams rn =
 renderNote :: Note -> RenderedNote
 renderNote (Note h) = renderNoteHead h
 renderNote (Rest n) = Graced Nothing (L.Rest (Just $ L.Duration n) [])
-renderNote (Tuplet r (Beamed h)) = Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) (fmap renderNote h)
+renderNote (Tuplet r h) = Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) (fmap renderNote h)
 
--- TODO: test by building pngs and comparing to known good versions
 renderNoteHead :: NoteHead -> RenderedNote
 renderNoteHead n =
   let pitch = hand leftPitch rightPitch (n ^. noteHeadHand)

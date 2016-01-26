@@ -23,7 +23,7 @@ jimmyBlue =
               ]
          commonStart
          bars [dotCut (h2h r16 [flam,id,flam,flam]), singles 4 r32 <-> singles 4 r32 & accentFirst
-              ,r8&accent.roll<->l8&accent.roll.endRoll, dotCut (dbl r16 [accent.endRoll.roll, accent.endRoll, accent.roll, accent.endRoll])]
+              ,r8&accent.roll<->l8&accent.roll, dotCut (dbl r16 [accent.roll, accent, accent.roll, accent])]
          commonStart
          bars ending2
          thenRepeat
@@ -34,7 +34,7 @@ jimmyBlue =
                in b1 <> fmap swapHands b1
          bars commonStart
          bars [para r32&zapN 0 flam<->dotCut (l16<->l16&flam), singles 4 r32 <-> r8&accent.roll
-              ,dotCut(l16&endRoll.roll.accent<->l16&endRoll.accent)<->singles 4 r32, r8&accent<->dotCut(r16&flam<->r16&flam)]
+              ,dotCut(l16&roll.accent<->l16&accent)<->singles 4 r32, r8&accent<->dotCut(r16&flam<->r16&flam)]
          let
            return2 = -- the start of this movement should be dot/cut in both rounded and swung
              let v = r16&P.dot.accent<->l16&P.cut.accent<->singles 4 r32&accentN 3<->singles 4 r32&accentFirst<->singles 4 r32&accentFirst
@@ -45,8 +45,8 @@ jimmyBlue =
     --- PART 3
     p3 = buildPart $ bars (first2 <> end2' <> first2 <> ending2) >> thenRepeat
       where first2 =
-              [dotCut (r16&flam<->l16&roll<->l16&endRoll<->r16&roll), dotCut(r16&endRoll<->l16<->r16<->l16&flam)
-              ] <> (let v = r8&flam.roll<->dotCut (l16&endRoll<->r16) in [v, swapHands v])
+              [dotCut (r16&flam<->l16&roll<->l16<->r16&roll), dotCut(r16<->l16<->r16<->l16&flam)
+              ] <> (let v = r8&flam.roll<->dotCut (l16<->r16) in [v, swapHands v])
             end2' =
               [dotCut (r16&flam<->l16<->r16&flam<->l16&flam), singles 4 r32 & accentN 3 <-> singles 4 r32
               ,dotCut (r16&drag<->r16&accent<->l16<->r16&drag), singles 4 r32 <-> dotCut (r16&accent<->l16)]
@@ -57,14 +57,14 @@ jimmyBlue =
                 r8&flam, rest8, rest8, triplet (r16&flam <-> l16 <-> r16 & flam)
               , r8&flam,  rest8, rest16&dot, r16&cut.drag<->singles 4 r32
               , r16&flam <-> ldrag <-> dotCut (l16<->l16&accent), singles 4 r32 & accentN 3 <-> singles 4 r32
-              , r8&roll.accent <-> l8&endRoll.roll.accent, r8&endRoll.accent <-> dotCut (r16<-> l16)
+              , r8&roll.accent <-> l8&roll.accent, r8&accent <-> dotCut (r16<-> l16)
               ]
             second2 = twice [para r32&zapN 0 flam<->triplet (l16<->r16<->l16&flam), singles 4 r32 & accentN 3 <-> singles 4 r32 & accentN 3 ]
             return2 = twice [singles 6 r32 & accentFirst <-> r16&drag, singles 4 r32&accentFirst <-> singles 4 r32 & accentFirst]
 
     ending2 = [
       dotCut (h2h r16 [flam, id, flam, flam]), singles 4 r32 <-> dotCut (r16&flam<-> l16)
-      ,r32&flam<->l32<->r16<->dotCut (l16<->r16&roll), r8&endRoll, rest8
+      ,r32&flam<->l32<->r16<->dotCut (l16<->r16&roll), r8, rest8
       ]
 
     -- dot = P.dot
