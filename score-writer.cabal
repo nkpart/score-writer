@@ -46,6 +46,7 @@ executable score-writer
                      , filepath
                      , transformers
                      , exceptions
+                     , lens
   default-language:    Haskell2010
 
 test-suite score-writer-test

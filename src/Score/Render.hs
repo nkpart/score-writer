@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Score.Render (
-  printScore
+  printScore, printScoreBook
   ) where
 
 import           Control.Lens
@@ -11,11 +11,18 @@ import qualified Data.Music.Lilypond as L
 import           Data.Ratio
 import qualified Data.Sequence       as S
 import           Data.VectorSpace
+import qualified Data.List as List
 import           Score.Types
 import           Text.Pretty
 
 printScore :: Score -> String
-printScore music = (mappend engraverPrefix $ runPrinter . pretty . renderScore $ music)
+printScore music = printScoreBook [[music]]
+  -- (mappend engraverPrefix $ runPrinter . pretty . L.Slash "book" . L.Sequential . pure . renderScore $ music)
+
+printScoreBook :: [[Score]] -> String
+printScoreBook scores = (mappend engraverPrefix stuff)
+  where renderPage = fmap renderScore
+        stuff = runPrinter . pretty . L.Slash "book" . L.Sequential $ List.intercalate [L.Slash1 "pageBreak"] (fmap renderPage scores)
 
 engraverPrefix :: String
 engraverPrefix =
@@ -62,10 +69,10 @@ renderScore (Score details signature anacrusis ps) =
           -- ,L.Override "SpacingSpanner.strict-note-spacing" (L.toLiteralValue "##t")
                                          ])]]
    in
-    L.Slash "book" $ L.Sequential [
-       L.Slash "header" $ L.Sequential (renderDetails details <> [L.Field "tagline" (L.toValue "")])
-       , L.Slash "score" $ L.Sequential (content ++ styles)
-       ]
+    L.Slash "bookpart" $ L.Sequential
+    [L.Slash "header" $ L.Sequential (renderDetails details <> [L.Field "tagline" (L.toValue "")])
+    , L.Slash "score" $ L.Sequential (content ++ styles)
+    ]
 
 renderAnacrusis :: Maybe Beamed -> State [NoteMod] [L.Music]
 renderAnacrusis anacrusis =

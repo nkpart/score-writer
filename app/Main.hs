@@ -1,8 +1,8 @@
 module Main where
 
 import Score
-import Score.Types (Score)
--- import Score.Library.BBCOCA
+-- import Score.Types (Score)
+import Score.Library.BBCOCA
 import System.Process
 import Control.Monad.Catch
 import System.FilePath
@@ -14,9 +14,15 @@ import Control.Monad (forever)
 import Control.Exception hiding (catch)
 import Language.Haskell.Interpreter
 import System.Environment
+import Control.Lens
+import Score.Types
 
 main :: IO ()
-main = do
+main =
+  writeScoreBookPDF "bbc" [[pmDonaldMacleanOfLewis], [pmDonaldMacleanOfLewis & scoreDetails . detailsTitle .~ "wat" ]]
+
+watch :: IO ()
+watch = do
   file:value:_ <- getArgs
   -- let file = "src/Score/Library/BBCOCA.hs"
   --     value = "pmDonaldMacleanOfLewis"
