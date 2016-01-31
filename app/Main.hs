@@ -1,8 +1,6 @@
 module Main where
 
 import Score
--- import Score.Types (Score)
-import Score.Library.BBCOCA
 import System.Process
 import Control.Monad.Catch
 import System.FilePath
@@ -14,18 +12,17 @@ import Control.Monad (forever)
 import Control.Exception hiding (catch)
 import Language.Haskell.Interpreter
 import System.Environment
-import Control.Lens
+-- import Control.Lens
 import Score.Types
+-- import Score.Library.BBCOCA
 
 main :: IO ()
 main =
-  writeScoreBookPDF "bbc" [[pmDonaldMacleanOfLewis], [pmDonaldMacleanOfLewis & scoreDetails . detailsTitle .~ "wat" ]]
+  watch
 
 watch :: IO ()
 watch = do
   file:value:_ <- getArgs
-  -- let file = "src/Score/Library/BBCOCA.hs"
-  --     value = "pmDonaldMacleanOfLewis"
 
   absFile <- canonicalizePath file
 
@@ -60,14 +57,14 @@ hintMe chan valueName =
      let action = do
           loadModules [f]
           setTopLevelModules =<< getLoadedModules
-          score <- interpret valueName (as :: Score)
+          score <- interpret valueName (as :: [Score])
           liftIO $ viewScore score
      catch action (liftIO . printError)
 
 printError :: InterpreterError -> IO ()
 printError = print
 
-viewScore :: Score -> IO ()
+viewScore :: [Score] -> IO ()
 viewScore score =
-  do writeScorePDF "wizzle" score
+  do writeScorePage Landscape PDF "wizzle" score
      callCommand $ "open -a Safari -g wizzle.pdf"

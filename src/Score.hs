@@ -1,14 +1,11 @@
-module Score where
+module Score (module Score, Format (PNG, PDF), Orientation (Portrait, Landscape)) where
 
 import           LilypondProcess
 import           Score.Render
 import           Score.Types
 
-writeScorePNG :: FilePath -> Score -> IO ()
-writeScorePNG name music = runLilypond PNG name (printScore music)
+writeScore :: Orientation -> Format -> FilePath -> Score -> IO ()
+writeScore o fmt name music = runLilypond fmt name (printScorePage o [music])
 
-writeScorePDF :: FilePath -> Score -> IO ()
-writeScorePDF name music = runLilypond PDF name (printScore music)
-
-writeScoreBookPDF :: FilePath -> [[Score]] -> IO ()
-writeScoreBookPDF name music = runLilypond PDF name (printScoreBook music)
+writeScorePage :: Orientation -> Format -> FilePath -> [Score] -> IO ()
+writeScorePage o format name music = runLilypond format name (printScorePage o music)

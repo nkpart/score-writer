@@ -1,6 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 module Score.Render (
-  printScore, printScoreBook
+  printScorePage, Orientation(..)
   ) where
 
 import           Control.Lens
@@ -11,18 +11,22 @@ import qualified Data.Music.Lilypond as L
 import           Data.Ratio
 import qualified Data.Sequence       as S
 import           Data.VectorSpace
-import qualified Data.List as List
 import           Score.Types
 import           Text.Pretty
 
-printScore :: Score -> String
-printScore music = printScoreBook [[music]]
-  -- (mappend engraverPrefix $ runPrinter . pretty . L.Slash "book" . L.Sequential . pure . renderScore $ music)
+data Orientation = Portrait | Landscape deriving (Eq, Show)
 
-printScoreBook :: [[Score]] -> String
-printScoreBook scores = (mappend engraverPrefix stuff)
-  where renderPage = fmap renderScore
-        stuff = runPrinter . pretty . L.Slash "book" . L.Sequential $ List.intercalate [L.Slash1 "pageBreak"] (fmap renderPage scores)
+renderOrientation :: Orientation -> String
+renderOrientation o' =
+        "#(set-default-paper-size \"a4\" '" <> o <> ")"
+        where o = case o' of
+                    Portrait -> "portrait"
+                    Landscape -> "landscape"
+
+printScorePage :: Orientation -> [Score] -> String
+printScorePage o scores = mappend engraverPrefix stuff
+  where -- _stuff' = runPrinter . pretty . L.Slash "book" . L.Sequential $ List.intercalate [L.Slash1 "pageBreak"] (fmap renderPage scores)
+        stuff = renderOrientation o <> "\n" <> (runPrinter . pretty . L.Slash "book" . L.Sequential $ fmap renderScore scores)
 
 engraverPrefix :: String
 engraverPrefix =
@@ -49,12 +53,12 @@ engraverPrefix =
   -- TODO staff height bigger, grace notes smaller
   -- title/author/style
 renderScore :: Score -> L.Music
-renderScore (Score details signature anacrusis ps) =
+renderScore (Score details signature ps) =
   let content =
         flip evalState [] $
-        do anac <- renderAnacrusis anacrusis
+        do
            bs <- traverse renderPart ps
-           pure $! beginScore signature ((anac ++) . F.toList $ bs)
+           pure $! beginScore signature (F.toList bs)
 
       -- the {} from slash1/slash here is important
       styles = [L.Slash1 "layout", L.Sequential [
@@ -72,6 +76,9 @@ renderScore (Score details signature anacrusis ps) =
     L.Slash "bookpart" $ L.Sequential
     [L.Slash "header" $ L.Sequential (renderDetails details <> [L.Field "tagline" (L.toValue "")])
     , L.Slash "score" $ L.Sequential (content ++ styles)
+    , L.Slash "paper" $ L.Sequential [
+        L.Raw "#(set-default-paper-size \"a4\" 'landscape)"
+                                     ]
     ]
 
 renderAnacrusis :: Maybe Beamed -> State [NoteMod] [L.Music]
@@ -79,7 +86,7 @@ renderAnacrusis anacrusis =
     case anacrusis of
       Nothing -> pure []
       Just a ->
-        do let Sum duration = a ^. _Duration . to Sum
+        do let duration = sumOf _Duration a
            bs <- renderManyBeameds (pure a)
            pure $! [ L.Partial (round $ 1/duration) (L.Sequential bs) ]
 
@@ -92,14 +99,17 @@ renderDetails ds = [
 
 renderPart :: Part -> State [NoteMod] L.Music
 renderPart p =
-  do beams <- renderManyBeameds (p ^.. partBeams . traverse)
-     let thisPart = L.Sequential beams
+  do anacrusis <- renderAnacrusis (view partAnacrusis p)
+     beams <- renderManyBeameds (p ^.. partBeams . traverse)
+     let thisPart = L.Sequential (anacrusis ++ beams)
          r = fmap L.Sequential . renderManyBeameds . F.toList
      case p ^. partRepeat of
        NoRepeat -> pure thisPart
        Repeat -> pure $ L.Repeat False 2 thisPart Nothing
        Return (firstTime, secondTime) ->
          do ft <- restoring (r firstTime)
+            -- a split bar
+            -- st <- L.Partial (round $ 1 / (sumOf (traverse . _Duration) secondTime)) <$> r secondTime
             st <- r secondTime
             pure $! L.Repeat False 2 thisPart (Just (ft, st))
 
@@ -187,6 +197,7 @@ buildMusic :: S.Seq RenderedNote -> S.Seq L.Music
 buildMusic rns = rns >>= f
   where f (Graced mb l) = maybe (pure l) (\v -> S.fromList [v,l]) mb
         f (Tupleted n d more) =
+          -- TODO: grace notes need to be rendered outside of the tuplet
           pure $
           L.Tuplet n d (L.Sequential . F.toList . buildMusic $ more)
 
@@ -254,8 +265,6 @@ renderNoteHead n =
          -- Nothing -> [L.Slash1 "stemDown", finalNote]
 
 -- https://hackage.haskell.org/package/lilypond-1.9.0/docs/Data-Music-Lilypond.html
-           -- [L.Articulation L.Default L.Accent]]-- the default note is a qtr note, so we quotient that out
-
 
 leftPitch :: L.Pitch
 leftPitch = L.Pitch (L.B, 0, 4)

@@ -69,7 +69,6 @@ jimmyBlue =
 
     -- dot = P.dot
     -- cut = P.cut
-    dotCut = zap (cycle [dot, cut])
     dot = id
     cut = id
     accentFirst = accentN 0

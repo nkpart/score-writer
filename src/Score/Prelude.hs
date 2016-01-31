@@ -103,6 +103,8 @@ dbl startNote fs = foldl1 (<->) (Prelude.take (Prelude.length fs) $ cycle [start
 
 para x = x <-> swapHands x <-> x <-> x
 
+dotCut = zap (cycle [dot, cut])
+
 -- | DSL
 
 type PartM a = Writer (Endo Part) a
@@ -111,7 +113,9 @@ writeF :: (Part -> Part) -> PartM ()
 writeF f = tell $ Endo f
 
 buildPart :: PartM a -> Part
-buildPart ma = appEndo (execWriter ma) (Part mempty NoRepeat)
+buildPart ma = appEndo (execWriter ma) (Part Nothing mempty NoRepeat)
+
+upbeat v = writeF (partAnacrusis .~ Just v)
 
 bars :: Seq Beamed -> PartM ()
 bars bs = writeF (partBeams %~ (\x -> bs <> x))

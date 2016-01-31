@@ -68,7 +68,8 @@ beam :: Note -> Beamed
 beam = flip Beamed mempty . pure
 
 data Part =
-  Part {_partBeams :: Seq Beamed
+  Part {_partAnacrusis :: Maybe Beamed
+       ,_partBeams :: Seq Beamed
        ,_partRepeat :: Repeat}
   deriving (Eq,Show)
 
@@ -81,20 +82,17 @@ data Repeat
 data Signature = Signature Integer Integer deriving (Eq, Show)
 
 data Score =
-  Score
-  { _scoreDetails :: Details,
-    _scoreSignature :: Signature,
-    _scoreAnacrusis :: Maybe Beamed,
-    _scoreParts :: Seq Part}
+  Score {_scoreDetails :: Details
+        ,_scoreSignature :: Signature
+        ,_scoreParts :: Seq Part}
   deriving (Eq,Show)
 
 data Details =
-  Details
-  { _detailsTitle :: String,
-    _detailsGenre :: String,
-    _detailsComposer :: String,
-    _detailsBand :: Maybe String
-  } deriving (Eq, Show)
+  Details {_detailsTitle :: String
+          ,_detailsGenre :: String
+          ,_detailsComposer :: String
+          ,_detailsBand :: Maybe String}
+  deriving (Eq,Show)
 
 -- | Concrete lenses and prisms
 
@@ -171,11 +169,11 @@ instance (Applicative f) => AsNoteHead (->) f Beamed where
   _NoteHead = beamedNotes . traverse . _NoteHead
 
 instance (Applicative f) => AsNoteHead (->) f Part where
-  _NoteHead f (Part ph rep) = Part <$> (traverse . _NoteHead) f ph <*> pure rep
+  -- TODO should this touch the anacrusis?
+  _NoteHead f (Part ana ph rep) = Part <$> (traverse . _NoteHead) f ana <*> (traverse . _NoteHead) f ph <*> pure rep
 
 instance (Applicative f) => AsNoteHead (->) f Score where
-  -- TODO should this touch the anacrusis?
-  _NoteHead f (Score d sig ana s) = Score d sig ana <$> (traverse . _NoteHead) f s
+  _NoteHead f (Score d sig s) = Score d sig <$> (traverse . _NoteHead) f s
 
 instance AsSignature p f Signature where
   _Signature = id
