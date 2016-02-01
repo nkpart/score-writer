@@ -11,6 +11,37 @@ import           Score.Prelude
 msr2016 :: [[Score]]
 msr2016 = [[_79ths], [dorrator], [lexy]]
 
+missGirdle :: Score
+missGirdle =
+  Score (Details "Miss Girdle"
+                 "Reel"
+                 ""
+        (Just "BBC OCA Pipe Band"))
+        (Signature 2 2)
+        [p1, p2, p3]
+  where 
+        p1 = buildPart $
+          do bars [r4&roll.accent,l8<->l8, r8&flam<->l8&flam<->r8<->l8]
+             bars [r4&roll.accent,l8<->l8, r8&flam<->r8&drag<->singles 4 r16]
+             bars [r4&accent,r8&flam<->l8, r8<->l8&flam<->r8<->l8]
+             bars [r8&flam<->r8&roll, r8<->l8&flam, r8<->l8&flam<->r8&flam<->l8]
+             thenRepeat
+        p2 = buildPart $
+          do bars [para r16&zapN 0 flam, l8<->l8&flam, r8<->l8&flam, r4&flam]
+             bars [r8&roll<->r8 <-> l8<->r8&flam, l8<->r8&drag <-> r8<->l8]
+             bars [para r16&zapN 0 flam, l8<->l8&flam, r8<->l8&flam, r4&flam]
+             bars [r8&flam<->r8&roll, r8<->l8&flam, r8<->l8&flam<->r8&flam<->l8]
+
+             bars [para r16&zapN 0 flam, l8<->l8&flam, r8<->l8&flam, r4&flam]
+             bars [r8&roll<->r8 <-> l8<->r8&flam, l8<->r8&drag <-> r8<->l8]
+             bars [para r16&zapN 0 flam, l8<->l8&flam, r8<->l8&flam, r4&flam]
+             bars [r8&flam<->r8&roll, r8<->l8&flam]
+             bars [r2&roll]
+        p3 = buildPart $ bars [r8]
+        
+        
+        
+
 _79ths :: Score
 _79ths =
   Score (Details "The 79th's Farewell to Gibraltar"
@@ -74,7 +105,7 @@ dorrator =
                  ""
                  (Just "BBC Old Collegians Pipe Band"))
         (Signature 4 4)
-        [p1, p2] -- [p1, p2, p3, p4]
+        [p1, p2]
   where p1 = buildPart $
             do bars [r4&flam, l4&flam, r8&ruff.dot<->l8&cut.flam, r8&cut<->l8&dot.roll.accent]
                end3

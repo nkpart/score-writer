@@ -152,6 +152,7 @@ beginTime sig@(Signature n m) = beamStuff <> [L.Time n m]
                 -- TODO: Flesh out more signatures
                 -- TODO: rendering test of beaming in strathspeys, jigs, 3/4s, etc.
                 Signature 2 4 -> setMomentAndStructure 8 [2,2,2,2]
+                Signature 2 2 -> setMomentAndStructure 8 [2,2,2,2]
                 -- TODO what does the 6 here even mean.
                 Signature 6 8 -> setMomentAndStructure 6 [3, 3]
                 _ -> error "Unknown signature"

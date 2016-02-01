@@ -6,10 +6,11 @@ resolver: lts-4.0
 # Local packages, usually specified by relative directory name
 packages:
 - '.'
-- location: 
-    git: git@github.com:nkpart/lilypond.git 
-    commit: 7a2d158
-  extra-dep: true
+#- location: 
+#    git: git@github.com:nkpart/lilypond.git 
+#    commit: 7a2d158
+#  extra-dep: true
+- '../lilypond'
 - location: 
     git: https://github.com/music-suite/music-dynamics.git
     commit: ced2f09
