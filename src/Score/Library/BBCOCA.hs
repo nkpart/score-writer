@@ -34,13 +34,9 @@ missGirdle =
 
              bars [para r16&zapN 0 flam, l8<->l8&flam, r8<->l8&flam, r4&flam]
              bars [r8&roll<->r8 <-> l8<->r8&flam, l8<->r8&drag <-> r8<->l8]
-             bars [para r16&zapN 0 flam, l8<->l8&flam, r8<->l8&flam, r4&flam]
-             bars [r8&flam<->r8&roll, r8<->l8&flam]
-             bars [r2&roll]
+             bars [r4&flam,r8&flam<->l8, r8<->l8&flam<->r8<->l8]
+             bars [r8&flam<->r8&roll, r8<->l8&flam, r2&roll]
         p3 = buildPart $ bars [r8]
-        
-        
-        
 
 _79ths :: Score
 _79ths =

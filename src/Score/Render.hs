@@ -26,7 +26,9 @@ renderOrientation o' =
 printScorePage :: Orientation -> [Score] -> String
 printScorePage o scores = mappend engraverPrefix stuff
   where -- _stuff' = runPrinter . pretty . L.Slash "book" . L.Sequential $ List.intercalate [L.Slash1 "pageBreak"] (fmap renderPage scores)
-        stuff = renderOrientation o <> "\n" <> (runPrinter . pretty . L.Slash "book" . L.Sequential $ fmap renderScore scores)
+        stuff = renderOrientation o <> "\n" <> (runPrinter . pretty . L.Slash "book" . L.Sequential $ paperBlock : headerBlock : fmap renderScore scores)
+        paperBlock = L.Slash "paper" (L.Sequential [L.Field "print-all-headers" (L.toLiteralValue "##t")])
+        headerBlock = L.Slash "header" (L.Sequential [L.Field "tagline" (L.toValue "")])
 
 engraverPrefix :: String
 engraverPrefix =
@@ -73,13 +75,8 @@ renderScore (Score details signature ps) =
           -- ,L.Override "SpacingSpanner.strict-note-spacing" (L.toLiteralValue "##t")
                                          ])]]
    in
-    L.Slash "bookpart" $ L.Sequential
-    [L.Slash "header" $ L.Sequential (renderDetails details <> [L.Field "tagline" (L.toValue "")])
-    , L.Slash "score" $ L.Sequential (content ++ styles)
-    , L.Slash "paper" $ L.Sequential [
-        L.Raw "#(set-default-paper-size \"a4\" 'landscape)"
-                                     ]
-    ]
+    let header = L.Slash "header" $ L.Sequential (renderDetails details <> [L.Field "tagline" (L.toValue "")])
+    in L.Slash "score" $ L.Sequential (content ++ [header] ++ styles)
 
 renderAnacrusis :: Maybe Beamed -> State [NoteMod] [L.Music]
 renderAnacrusis anacrusis =
