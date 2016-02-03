@@ -9,7 +9,7 @@ An example of what can be produced is in the tests:
 
 The score is defined here:
 
-* https://github.com/nkpart/score-writer/blob/master/src/Score/Library/BBCOCA.hs#L11
+* https://github.com/nkpart/score-writer/blob/master/src/Score/Library/BBCOCA.hs#L126-L170
 
 Requirements
 ---
