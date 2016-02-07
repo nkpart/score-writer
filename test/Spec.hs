@@ -22,15 +22,18 @@ tests =
                        [
                          testScores "moment and structure"
                                   "moment-and-structure.png"
-                                  [
-                                  (singleParted
+                                  [singleParted
                                      "2/4"
                                      (Signature 2 4)
-                                     (bars [singles 4 r16,singles 8 r32]))
-                                  ,(singleParted
+                                     (bars [singles 4 r16,singles 8 r32])
+                                  ,singleParted
                                      "6/8 Jig"
                                      (Signature 6 8)
-                                     (bars [singles 4 r16 <-> r8, l8 <-> singles 4 r16, singles 6 r16, r8<->l8<->r8]))
+                                     (bars [singles 4 r16 <-> r8, l8 <-> singles 4 r16, singles 6 r16, r8<->l8<->r8])
+                                  ,singleParted
+                                     "Strathspey 4/4"
+                                     (Signature 4 4)
+                                     (bars [triplet (singles 4 r16 <-> r8), triplet ( l8 <-> singles 4 r16 ), triplet (singles 6 r16), triplet (r8<->l8<->r8)])
                                   ]
                          -- testScore "6/8 Jig"
                          --          "moment-and-structure-68jig.png"

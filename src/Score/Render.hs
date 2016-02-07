@@ -50,6 +50,12 @@ engraverPrefix =
 \                         (begin\n\
 \                           (set! working-copy (cdr working-copy))))\n\
 \                           (set! total (+ total (car working-copy))))))))))))\n\
+\startGraceMusic = {\
+\  \\override NoteHead.font-size = -5\
+\}\
+\stopGraceMusic = {\
+\  \\revert NoteHead.font-size\
+\}\
 \\n"
 
   -- TODO staff height bigger, grace notes smaller
@@ -144,12 +150,12 @@ beginTime :: Signature -> [L.Music]
 beginTime sig@(Signature n m) = beamStuff <> [L.Time n m]
   where
         beamStuff = [L.Set "strictBeatBeaming" (L.toLiteralValue "##t"),
-                     L.Set "subdivideBeams" $ L.toLiteralValue "##t"] <> _bx
-        _bx = case sig of
-                -- TODO: Flesh out more signatures
-                -- TODO: rendering test of beaming in strathspeys, jigs, 3/4s, etc.
+                     L.Set "subdivideBeams" $ L.toLiteralValue "##t"] <> bx
+        bx = case sig of
+                -- TODO: Missing: marches (3/4, 4/4, 6/8)
                 Signature 2 4 -> setMomentAndStructure 8 [2,2,2,2]
                 Signature 2 2 -> setMomentAndStructure 8 [2,2,2,2]
+                Signature 4 4 -> setMomentAndStructure 1 [4,4,4,4]
                 -- TODO what does the 6 here even mean.
                 Signature 6 8 -> setMomentAndStructure 6 [3, 3]
                 _ -> error "Unknown signature"
@@ -218,7 +224,7 @@ renderNoteHead n =
       embell = fmap f (n^.noteHeadEmbellishment)
                 where f Flam = L.Slash "grace" (0.5 *^ L.note (L.NotePitch oppPitch Nothing))
                       f Drag =
-                        L.Slash1 "grace" ^+^
+                        L.Slash "grace" $
                       -- INFO grace note size https://lists.gnu.org/archive/html/lilypond-user/2011-04/msg00440.html
                         L.Sequential [
                             0.25 *^ L.note (L.NotePitch oppPitch Nothing),
@@ -250,11 +256,8 @@ renderNoteHead n =
       startTie = if n^.noteHeadSlurBegin
                   then L.beginSlur
                   else id
-      beamed = id
-        -- toggle id L.endBeam L.beginBeam beamState
-
       finalNote =
-        beamed . startTie . endTie $ thisHead
+        startTie . endTie $ thisHead
 
   in Graced embell finalNote
          -- it seems grace notes are always stem up

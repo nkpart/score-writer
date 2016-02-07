@@ -67,4 +67,4 @@ printError = print
 viewScore :: [Score] -> IO ()
 viewScore score =
   do writeScorePage Landscape PDF "wizzle" score
-     callCommand $ "open -a Safari -g wizzle.pdf"
+     callCommand "open -a Safari -g wizzle.pdf"
