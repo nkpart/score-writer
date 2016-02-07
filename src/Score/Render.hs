@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# OPTIONS_GHC -Wwarn #-}
 module Score.Render (
   printScorePage, Orientation(..)
   ) where
@@ -183,6 +184,10 @@ renderBeamed =
 data RenderedNote = Graced (Maybe L.Music) L.Music
                   | Tupleted Int Int (S.Seq RenderedNote)
 
+notesOnly :: Traversal' RenderedNote L.Music
+notesOnly f (Graced mb n) = Graced mb <$> f n
+notesOnly f (Tupleted n d xs) = Tupleted n d <$> (traverse . notesOnly) f xs
+
 firstMusic :: Traversal' RenderedNote L.Music
 firstMusic f (Graced mb n) = Graced mb <$> f n
 firstMusic f (Tupleted n d xs) = case F.toList xs of
@@ -191,11 +196,9 @@ firstMusic f (Tupleted n d xs) = case F.toList xs of
 
 lastMusic :: Traversal' RenderedNote L.Music
 lastMusic f (Graced mb n) = Graced mb <$> f n
-lastMusic f (Tupleted n d xs) = case F.toList xs of
-                                   [] -> pure (Tupleted n d xs)
-                                   xs'@(_:_) ->
-                                     let (h:rest) = reverse xs'
-                                      in fmap (\x' -> Tupleted n d $ S.fromList $ reverse (x':rest)) (lastMusic f h)
+lastMusic f (Tupleted n d xs) =
+  let xs' = F.toList xs
+   in Tupleted n d . S.fromList <$> (_last . lastMusic) f xs'
 
 buildMusic :: S.Seq RenderedNote -> S.Seq L.Music
 buildMusic rns = rns >>= f
@@ -207,7 +210,7 @@ buildMusic rns = rns >>= f
 
 addBeams :: S.Seq RenderedNote -> S.Seq RenderedNote
 addBeams rn =
-  if S.length rn > 1
+  if lengthOf (traverse . notesOnly) rn > 1
      then rn & _head . firstMusic %~ L.beginBeam
              & _last . lastMusic %~ L.endBeam
      else rn
@@ -225,7 +228,6 @@ renderNoteHead n =
                 where f Flam = L.Slash "grace" (0.5 *^ L.note (L.NotePitch oppPitch Nothing))
                       f Drag =
                         L.Slash "grace" $
-                      -- INFO grace note size https://lists.gnu.org/archive/html/lilypond-user/2011-04/msg00440.html
                         L.Sequential [
                             0.25 *^ L.note (L.NotePitch oppPitch Nothing),
                             0.25 *^ L.note (L.NotePitch oppPitch Nothing)
