@@ -4,7 +4,7 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedLists           #-}
 {-# LANGUAGE TypeFamilies              #-}
-module Score.Library.BBCOCA where
+module BBCOCA where
 
 import           Score.Prelude
 
@@ -132,28 +132,35 @@ pmDonaldMacleanOfLewis =
         (Signature 6 8)
         [p1, p2, p3, p4]
      where
-         p1 = Part (Just l8) (firstBeginning <> firstEnding <> firstBeginning <> secondEnding) Repeat
+         p1 = buildPart $ do
+           upbeat l8
+           bars (firstBeginning <> firstEnding <> firstBeginning <> secondEnding) 
+           thenRepeat
+
          firstBeginning =
                   [r8&flam.dot <-> r8&roll.cut <-> r8, l4&flam, r8&roll
                   ,triplet (l8 & accent <-> r8 <-> l8) <-> r8 & flam , l8 & flam.dot <-> r8 & cut <-> l8]
-         p2 =
+         p2 = buildPart $ do
            let beginning =
                  [r4 & roll. dot, r4 , r8 & roll,
-                  l8 & accent <-> r8 & roll <-> r8 ,
-                  l8 & flam . dot <-> r8 & cut <-> l8]
-           in Part Nothing
-                   (beginning <> firstEnding)
-                   (Return (beginning <> secondEnding, pReturn))
+                  l8 & accent <-> r8 & roll <-> r8 , l8 & flam . dot <-> r8 & cut <-> l8]
+           bars (beginning <> firstEnding)
+           firstTime (beginning <> secondEnding)
+           secondTime pReturn
+
          p3 =
            let beginning =
-                 [r8 & flam. dot <-> r8 & roll . cut <-> r8 , triplet (l8 <-> r8 <-> l8) <-> r8 & flam
+                 [r8&flam.dot<->r8&roll.cut<->r8,triplet (l8<->r8<->l8)<->r8&flam
                  ,triplet (l8 <-> r8 <-> l8) <-> r8 & flam, l8 & flam . dot <-> r8 & cut <-> l8]
-            in Part Nothing (beginning <> firstEnding <> beginning <> secondEnding) Repeat
+            in buildPart $ bars (beginning <> firstEnding <> beginning <> secondEnding) >> thenRepeat
          p4 =
            let beginning =
                  [r4 & flam, l8 & ruff, r4 & flam, r8 & roll
                  ,triplet (l8 & accent <-> r8 <-> l8) <-> r8 & flam, l8 & flam . dot <-> r8 & cut <-> l8]
-            in Part Nothing (beginning <> firstEnding) (Return (beginning <> secondEnding, pReturn))
+            in buildPart $ do
+             bars (beginning <> firstEnding)
+             firstTime (beginning <> secondEnding)
+             secondTime pReturn
 
          pReturn = firstBeginning <> secondEnding
 

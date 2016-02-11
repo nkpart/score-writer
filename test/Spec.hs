@@ -4,9 +4,9 @@ import           Test.Tasty.Golden
 
 import           Data.Sequence        as S
 import           Score
-import           Score.Library.BBCOCA
 import           Score.Prelude
 import           System.FilePath
+import           BBCOCA
 
 main :: IO ()
 main = defaultMain tests
@@ -15,9 +15,9 @@ tests :: TestTree
 tests =
   testGroup "all the things"
             [testGroup "Full Rendering"
-                       [testScore "Pipe Major Donald Maclean of Lewis"
+                       [testScores "Pipe Major Donald Maclean of Lewis"
                                   "pipe-major-donald-maclean-of-lewis.png"
-                                  pmDonaldMacleanOfLewis]
+                                  [pmDonaldMacleanOfLewis]]
             ,testGroup "Signature setMomentAndStructure"
                        [
                          testScores "moment and structure"
@@ -40,17 +40,11 @@ tests =
                        ]]
 
 
-testScore name expected score =
-  goldenVsFile name fullExpected outputFile (writeScore Portrait PNG shortOutput score)
-  where outputFile = "tmp" </> takeFileName fullExpected
-        shortOutput = dropExtension outputFile
-        fullExpected = ("test/expected" </> expected)
-
 testScores name expected scores =
   goldenVsFile name fullExpected outputFile (writeScorePage Portrait PNG shortOutput scores)
   where outputFile = "tmp" </> takeFileName fullExpected
         shortOutput = dropExtension outputFile
-        fullExpected = ("test/expected" </> expected)
+        fullExpected = "test/expected" </> expected
 
 singleParted name sig part =
   Score (Details name "" "" Nothing) sig (S.fromList [buildPart part])

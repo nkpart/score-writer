@@ -1,38 +1,69 @@
 module Main where
 
-import Score
-import System.Process
-import Control.Monad.Catch
-import System.FilePath
-import System.FSNotify
-import System.Directory
-import Data.Monoid ((<>))
-import Control.Concurrent.Chan as Ch
-import Control.Monad (forever)
-import Control.Exception hiding (catch)
-import Language.Haskell.Interpreter
-import System.Environment
--- import Control.Lens
-import Score.Types
+import           Control.Concurrent.Chan      as Ch
+import           Control.Exception            hiding (catch)
+import           Control.Monad
+import           Control.Monad.Catch
+import           Language.Haskell.Interpreter
+import           Options.Applicative
+import           Score
+import           Score.Types
+import           System.Directory
+import           System.FilePath
+import           System.FSNotify
+import           System.Process
+
 -- import Score.Library.BBCOCA
+
+data CLI = Watch Orientation FilePath String
+         | Assemble Orientation FilePath String FilePath
+
+cli :: Parser CLI
+cli =
+  (subparser . mconcat)
+    [command "watch"
+             (info (Watch <$> orientation <*>
+                    strArgument (metavar "FILE") <*>
+                    strArgument (metavar "VALUE"))
+                   (progDesc "Watch a score for changes, preview when it does"))
+    ,command "assemble"
+             (info (Assemble <$> orientation <*>
+                    strArgument (metavar "FILE") <*>
+                    strArgument (metavar "VALUE") <*>
+                    strArgument (metavar "OUTPUT_FILE"))
+                   (progDesc "Assemble a page of scores"))]
+  where orientation =
+          flag' Portrait (long "portrait") <|>
+          flag' Landscape (long "landscape")
 
 main :: IO ()
 main =
-  watch
+  execParser (info (helper <*> cli) fullDesc) >>= execCli
 
-watch :: IO ()
-watch = do
-  file:value:_ <- getArgs
+execCli :: CLI -> IO ()
+execCli (Watch o file valueName) =
+  watch o file valueName
+execCli (Assemble o file valueName outputFile) =
+  assemble o file valueName outputFile
 
+watch :: Orientation -> FilePath -> String -> IO ()
+watch o file valueName = do
   absFile <- canonicalizePath file
-
   withManager $ \mgr ->
     do chan <- newChan
-  -- Write an initial entry into the chan so we start displaying the results straight away
+       -- Write an initial entry into the chan so we start displaying the results straight away
        writeChan chan (Modified absFile (error "Nick, u r going to regret this"))
        putStrLn ("Watching " <> file)
        watchChangesChan mgr chan file
-       throwLeft_ =<< runInterpreter (hintMe chan value)
+       _ <- runInterpreterWoo (hintMe chan valueName o)
+       return ()
+
+runInterpreterWoo :: InterpreterT IO c -> IO c
+runInterpreterWoo = runInterpreter >=> throwLeft
+
+assemble :: Orientation -> FilePath -> String -> FilePath -> IO ()
+assemble orientation file valueName outputFile =
+  writeScorePage orientation PNG outputFile =<< runInterpreterWoo (loadScores file valueName)
 
 watchChangesChan :: WatchManager -> EventChannel -> FilePath -> IO ()
 watchChangesChan mgr chan file =
@@ -47,24 +78,25 @@ changesTo _ _ = False
 throwLeft :: Either InterpreterError a -> IO a
 throwLeft = either throwIO return
 
-throwLeft_ :: Either InterpreterError b -> IO ()
-throwLeft_ = fmap (const ()) . throwLeft
-
-hintMe :: MonadInterpreter m => Chan Event -> String -> m b
-hintMe chan valueName =
+hintMe :: MonadInterpreter m => Chan Event -> String -> Orientation -> m b
+hintMe chan valueName o =
   forever $
   do Modified f _ <- liftIO (readChan chan)
-     let action = do
-          loadModules [f]
-          setTopLevelModules =<< getLoadedModules
-          score <- interpret valueName (as :: [Score])
-          liftIO $ viewScore score
-     catch action (liftIO . printError)
+     let doIt = do
+          score <- loadScores f valueName
+          liftIO $ viewScore o score
+     catch doIt (liftIO . printError)
+
+loadScores :: MonadInterpreter m => FilePath -> String -> m [Score]
+loadScores f valueName =
+  do loadModules [f]
+     setTopLevelModules =<< getLoadedModules
+     interpret valueName (as :: [Score])
 
 printError :: InterpreterError -> IO ()
 printError = print
 
-viewScore :: [Score] -> IO ()
-viewScore score =
-  do writeScorePage Landscape PDF "wizzle" score
+viewScore :: Orientation -> [Score] -> IO ()
+viewScore orientation score =
+  do writeScorePage orientation PDF "wizzle" score
      callCommand "open -a Safari -g wizzle.pdf"

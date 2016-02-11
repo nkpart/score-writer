@@ -18,7 +18,6 @@ library
                        Score.Types
                        Score.Render
                        Score.Prelude
-                       Score.Library.BBCOCA
                        LilypondProcess
   build-depends:       base >= 4.7 && < 5
                      , lens
@@ -47,11 +46,12 @@ executable score-writer
                      , transformers
                      , exceptions
                      , lens
+                     , optparse-applicative
   default-language:    Haskell2010
 
 test-suite score-writer-test
   type:                exitcode-stdio-1.0
-  hs-source-dirs:      test
+  hs-source-dirs:      test, library
   main-is:             Spec.hs
   build-depends:       base
                      , score-writer
