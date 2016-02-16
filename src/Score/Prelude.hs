@@ -99,7 +99,7 @@ singles n x = x <> singles (n-1) (x & swapHands)
 
 h2h startNote fs = singles (Prelude.length fs) startNote & zap fs
 
-dbl startNote fs = foldl1 (<->) (Prelude.take (Prelude.length fs) $ cycle [startNote, startNote, swapHands startNote, swapHands startNote]) & zap fs
+dbl startNote fs = (foldl1 (<->) (Prelude.take (Prelude.length fs) $ cycle [startNote, startNote, swapHands startNote, swapHands startNote])) & zap fs
 
 para x = x <-> swapHands x <-> x <-> x
 

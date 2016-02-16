@@ -2,7 +2,7 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE TypeFamilies          #-}
 {-# LANGUAGE NoMonomorphismRestriction          #-}
-module Score.Library.Solos where
+module Solos where
 
 import Score.Prelude hiding (dot, cut)
 import qualified Score.Prelude as P (dot, cut)
@@ -14,7 +14,7 @@ jimmyBlue =
                  "Arthur Cook"
                  Nothing)
         (Signature 2 4)
-        Nothing [p1, p2, p3, p4]
+        [p1, p2, p3, p4]
   where
     p1 = buildPart $
       do let commonStart = bars
@@ -23,7 +23,7 @@ jimmyBlue =
               ]
          commonStart
          bars [dotCut (h2h r16 [flam,id,flam,flam]), singles 4 r32 <-> singles 4 r32 & accentFirst
-              ,r8&accent.roll<->l8&accent.roll, dotCut (dbl r16 [accent.roll, accent, accent.roll, accent])]
+              ,r8&accent.roll<->l8&accent.roll, dotCut (dbl r16 ([accent.roll, accent, accent.roll, accent] :: [Beamed -> Beamed]))]
          commonStart
          bars ending2
          thenRepeat

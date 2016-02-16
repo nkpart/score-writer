@@ -156,9 +156,11 @@ beginTime sig@(Signature n m) = beamStuff <> [L.Time n m]
                 -- TODO: Missing: marches (3/4, 4/4, 6/8)
                 Signature 2 4 -> setMomentAndStructure 8 [2,2,2,2]
                 Signature 2 2 -> setMomentAndStructure 8 [2,2,2,2]
+                Signature 3 4 -> setMomentAndStructure 8 [2, 2, 2]
                 Signature 4 4 -> setMomentAndStructure 1 [4,4,4,4]
                 -- TODO what does the 6 here even mean.
                 Signature 6 8 -> setMomentAndStructure 6 [3, 3]
+                Signature 9 8 -> setMomentAndStructure 6 [3, 3, 3]
                 _ -> error "Unknown signature"
 
 renderManyBeameds :: [Beamed] -> State [NoteMod] [L.Music]
