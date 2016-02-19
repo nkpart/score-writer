@@ -13,10 +13,9 @@ import           System.FilePath
 import           System.FSNotify
 import           System.Process
 
--- import Score.Library.BBCOCA
-
-data CLI = Watch Orientation FilePath String
-         | Assemble Orientation FilePath String FilePath
+data CLI
+  = Watch Orientation FilePath String
+  | Assemble Orientation FilePath String FilePath
 
 cli :: Parser CLI
 cli =
@@ -63,7 +62,7 @@ runInterpreterWoo = runInterpreter >=> throwLeft
 
 assemble :: Orientation -> FilePath -> String -> FilePath -> IO ()
 assemble orientation file valueName outputFile =
-  writeScorePage orientation PNG outputFile =<< runInterpreterWoo (loadScores file valueName)
+  writeScorePage orientation PDF outputFile =<< runInterpreterWoo (loadScores file valueName)
 
 watchChangesChan :: WatchManager -> EventChannel -> FilePath -> IO ()
 watchChangesChan mgr chan file =
