@@ -168,6 +168,12 @@ instance Applicative f => AsNoteHead (->) f Note where
 instance (Applicative f) => AsNoteHead (->) f Beamed where
   _NoteHead = beamedNotes . traverse . _NoteHead
 
+instance (Applicative f) => AsNoteHead (->) f (Seq Beamed) where
+  _NoteHead = traverse . _NoteHead
+
+instance (Applicative f) => AsNoteHead (->) f ([Beamed]) where
+  _NoteHead = traverse . _NoteHead
+
 instance (Applicative f) => AsNoteHead (->) f Part where
   -- TODO should this touch the anacrusis?
   _NoteHead f (Part ana ph rep) = Part <$> (traverse . _NoteHead) f ana <*> (traverse . _NoteHead) f ph <*> pure rep
