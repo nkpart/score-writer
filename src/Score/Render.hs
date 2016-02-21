@@ -26,10 +26,9 @@ renderOrientation o' =
 
 printScorePage :: Orientation -> [Score] -> String
 printScorePage o scores = mappend engraverPrefix stuff
-  where -- _stuff' = runPrinter . pretty . L.Slash "book" . L.Sequential $ List.intercalate [L.Slash1 "pageBreak"] (fmap renderPage scores)
-        stuff = renderOrientation o <> "\n" <> (runPrinter . pretty . L.Slash "book" . L.Sequential $ paperBlock : headerBlock : fmap renderScore scores)
-        paperBlock = L.Slash "paper" (L.Sequential [L.Field "print-all-headers" (L.toLiteralValue "##t")])
-        headerBlock = L.Slash "header" (L.Sequential [L.Field "tagline" (L.toValue "")])
+  where stuff = renderOrientation o <> "\n" <> (runPrinter . pretty . slashBlock "book" $ paperBlock : headerBlock : fmap renderScore scores)
+        paperBlock = slashBlock "paper" [L.Field "print-all-headers" (L.toLiteralValue "##t")]
+        headerBlock = slashBlock "header" [L.Field "tagline" (L.toValue "")]
 
 engraverPrefix :: String
 engraverPrefix =
@@ -68,22 +67,17 @@ renderScore (Score details signature ps) =
         do
            bs <- traverse renderPart ps
            pure $! beginScore signature (F.toList bs)
-
-      -- the {} from slash1/slash here is important
       styles = [L.Slash1 "layout", L.Sequential [
                     L.Field "indent" (L.toLiteralValue "#0")
-                   ,L.Slash "context" (L.Sequential [
+                   ,slashBlock "context" [
                                          L.Slash1 "Score",
                                          L.Slash1 "consists #(bars-per-line-engraver '(4))",
                                          L.Slash1 "omit BarNumber",
                                          L.Override "GraceSpacing.spacing-increment" (L.toValue (0.2::Double)),
                                          L.Field "proportionalNotationDuration" (L.toLiteralValue "#(ly:make-moment 1/8)")
-          -- ,L.Override "SpacingSpanner.strict-grace-spacing" (L.toLiteralValue "##t")
-          -- ,L.Override "SpacingSpanner.strict-note-spacing" (L.toLiteralValue "##t")
-                                         ])]]
-   in
-    let header = L.Slash "header" $ L.Sequential (renderDetails details <> [L.Field "tagline" (L.toValue "")])
-    in L.Slash "score" $ L.Sequential (content ++ [header] ++ styles)
+                                         ]]]
+      header = slashBlock "header" (renderDetails details <> [L.Field "tagline" (L.toValue "")])
+   in slashBlock "score" (content ++ [header] ++ styles)
 
 renderAnacrusis :: Maybe Beamed -> State [NoteMod] [L.Music]
 renderAnacrusis anacrusis =
@@ -112,8 +106,6 @@ renderPart p =
        Repeat -> pure $ L.Repeat False 2 thisPart Nothing
        Return (firstTime, secondTime) ->
          do ft <- restoring (r firstTime)
-            -- a split bar
-            -- st <- L.Partial (round $ 1 / (sumOf (traverse . _Duration) secondTime)) <$> r secondTime
             st <- r secondTime
             pure $! L.Repeat False 2 thisPart (Just (ft, st))
 
@@ -128,10 +120,8 @@ beginScore :: Signature -> [L.Music] -> [L.Music]
 beginScore signature i =
   [
     L.New "Staff" Nothing (
-      L.Slash "with" $ L.Sequential [
-          L.Override "StaffSymbol.line-count" (L.toValue (1::Int))
-          -- TODO: work out why this doesn't turn on bar lines at the beginning of lines
-          -- ,L.Override "Score.BarLine.break-visibility" (L.toLiteralValue "#all-visible")
+      slashBlock "with" [
+           L.Override "StaffSymbol.line-count" (L.toValue (1::Int))
           ,L.Override "Stem.direction" (L.toValue (-1::Int))
           ,L.Override "StemTremolo.slope" (L.toValue (0.25::Double))
            -- ,L.Override "StemTremolo.Y-offset" (L.toValue (-0.8))
@@ -153,7 +143,6 @@ beginTime sig@(Signature n m) = beamStuff <> [L.Time n m]
         beamStuff = [L.Set "strictBeatBeaming" (L.toLiteralValue "##t"),
                      L.Set "subdivideBeams" $ L.toLiteralValue "##t"] <> bx
         bx = case sig of
-                -- TODO: Missing: marches (3/4, 4/4, 6/8)
                 Signature 2 4 -> setMomentAndStructure 8 [2,2,2,2]
                 Signature 2 2 -> setMomentAndStructure 8 [2,2,2,2]
                 Signature 3 4 -> setMomentAndStructure 8 [2, 2, 2]
@@ -227,10 +216,9 @@ renderNoteHead n =
   let pitch = hand leftPitch rightPitch (n ^. noteHeadHand)
       oppPitch = hand leftPitch rightPitch (swapHands $ n ^. noteHeadHand)
       embell = fmap f (n^.noteHeadEmbellishment)
-                where f Flam = L.Slash "grace" $ L.Sequential [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
+                where f Flam = slashBlock "grace" [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
                       f Drag =
-                        L.Slash "grace" $
-                        L.Sequential [
+                          slashBlock "grace" [
                             L.Revert "Beam.positions",
                             0.25 *^ L.note (L.NotePitch oppPitch Nothing),
                             0.25 *^ L.note (L.NotePitch oppPitch Nothing),
@@ -268,12 +256,6 @@ renderNoteHead n =
         startTie . endTie $ thisHead
 
   in Graced embell finalNote
-         -- it seems grace notes are always stem up
-         -- if they aren't we need this:
-         -- Just e -> [L.Slash1 "stemUp", e, L.Slash1 "stemDown", finalNote]
-         -- Nothing -> [L.Slash1 "stemDown", finalNote]
-
--- https://hackage.haskell.org/package/lilypond-1.9.0/docs/Data-Music-Lilypond.html
 
 leftPitch :: L.Pitch
 leftPitch = L.Pitch (L.B, 0, 4)
@@ -283,3 +265,6 @@ rightPitch = L.Pitch (L.D, 0, 5)
 
 beamPositions :: L.Music
 beamPositions = L.Override "Beam.positions" (L.toLiteralValue "#'(-3.5 . -3.5)") 
+
+slashBlock :: String -> [L.Music] -> L.Music
+slashBlock x b = L.Slash x (L.Sequential b)
