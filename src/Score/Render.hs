@@ -238,9 +238,8 @@ renderNoteHead n =
                             ]
                       f Ruff =
                         L.Slash1 "grace" ^+^
-                        -- L.Tuplet 3 2 (L.Sequential [
                          L.Sequential [
-                             L.Revert "Beam.positions",
+                            L.Revert "Beam.positions",
                             0.25 *^ L.note (L.NotePitch pitch Nothing),
                             0.25 *^ L.note (L.NotePitch oppPitch Nothing),
                             0.25 *^ L.note (L.NotePitch oppPitch Nothing),
