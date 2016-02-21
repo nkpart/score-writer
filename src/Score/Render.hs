@@ -92,7 +92,7 @@ renderAnacrusis anacrusis =
       Just a ->
         do let duration = sumOf _Duration a
            bs <- renderManyBeameds (pure a)
-           pure $! [ L.Partial (round $ 1/duration) (L.Sequential bs) ]
+           pure [ L.Partial (round $ 1/duration) (L.Sequential bs) ]
 
 renderDetails :: Details -> [L.Music]
 renderDetails ds = [
@@ -137,7 +137,7 @@ beginScore signature i =
            -- ,L.Override "StemTremolo.Y-offset" (L.toValue (-0.8))
           ]
       )
-  , L.Sequential ( [clefOff, L.Clef L.Percussion] <> beginTime signature <> i) ]
+  , L.Sequential ( [clefOff, L.Clef L.Percussion] <> beginTime signature <> [beamPositions]  <> i) ]
   where clefOff = L.Slash1 "hide Staff.Clef"
 
 setMomentAndStructure :: Integer -> [Integer] -> [L.Music]
@@ -227,20 +227,25 @@ renderNoteHead n =
   let pitch = hand leftPitch rightPitch (n ^. noteHeadHand)
       oppPitch = hand leftPitch rightPitch (swapHands $ n ^. noteHeadHand)
       embell = fmap f (n^.noteHeadEmbellishment)
-                where f Flam = L.Slash "grace" (0.5 *^ L.note (L.NotePitch oppPitch Nothing))
+                where f Flam = L.Slash "grace" $ L.Sequential [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
                       f Drag =
                         L.Slash "grace" $
                         L.Sequential [
+                            L.Revert "Beam.positions",
                             0.25 *^ L.note (L.NotePitch oppPitch Nothing),
-                            0.25 *^ L.note (L.NotePitch oppPitch Nothing)
+                            0.25 *^ L.note (L.NotePitch oppPitch Nothing),
+                            beamPositions
                             ]
                       f Ruff =
                         L.Slash1 "grace" ^+^
-                        L.Tuplet 3 2 (L.Sequential [
+                        -- L.Tuplet 3 2 (L.Sequential [
+                         L.Sequential [
+                             L.Revert "Beam.positions",
                             0.25 *^ L.note (L.NotePitch pitch Nothing),
                             0.25 *^ L.note (L.NotePitch oppPitch Nothing),
-                            0.25 *^ L.note (L.NotePitch oppPitch Nothing)
-                            ])
+                            0.25 *^ L.note (L.NotePitch oppPitch Nothing),
+                            beamPositions
+                            ]
       events =
         let accF =
               if n^.noteHeadAccent
@@ -276,3 +281,6 @@ leftPitch = L.Pitch (L.B, 0, 4)
 
 rightPitch :: L.Pitch
 rightPitch = L.Pitch (L.D, 0, 5)
+
+beamPositions :: L.Music
+beamPositions = L.Override "Beam.positions" (L.toLiteralValue "#'(-3.5 . -3.5)") 

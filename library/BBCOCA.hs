@@ -167,7 +167,7 @@ theCurlew = Score (Details "The Curlew"
           [p1, p2]
     where
       p1 = buildPart $
-        do bars [r4&flam.dot.accent, l4&flam, r8&flam.accent] -- <->l8<->r8&drag]
+        do bars [r4&flam.dot.accent, l4&flam, r8&flam.accent]
            bars [l8<->r8&drag<->r8, l8&flam<->r8<->l8&flam]
            bars [r4&flam.dot.accent, r4&roll,l8]
            bars [singles 4 r16<->r8&accent, l8<->r8<->l8]
@@ -178,6 +178,7 @@ theCurlew = Score (Details "The Curlew"
            bars [singles 4 r16<->r8&accent, l8<->r8<->l8]
 
            thenRepeat
+
       p2 = buildPart $
         do bars [r4&roll.dot.accent, r8<->l8<->r8&drag]
            bars [singles 4 r16<->r8&accent, l8<->r8<->l8]
