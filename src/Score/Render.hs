@@ -15,14 +15,25 @@ import           Data.VectorSpace
 import           Score.Types
 import           Text.Pretty
 
+
+-- TODO:
+-- * unisons
+-- * prettier fonts
+-- * tweak note styles to look like this: http://drummingmad.com/what-are-unisons/
+
+
+-- | STYLE
+
+
+
 data Orientation = Portrait | Landscape deriving (Eq, Show)
 
 renderOrientation :: Orientation -> String
-renderOrientation o' =
-        "#(set-default-paper-size \"a4\" '" <> o <> ")"
-        where o = case o' of
-                    Portrait -> "portrait"
-                    Landscape -> "landscape"
+renderOrientation o' = "#(set-default-paper-size \"a4\" '" <> o <> ")"
+  where o =
+          case o' of
+            Portrait -> "portrait"
+            Landscape -> "landscape"
 
 printScorePage :: Orientation -> [Score] -> String
 printScorePage o scores = mappend engraverPrefix stuff
@@ -58,8 +69,7 @@ engraverPrefix =
 \}\
 \\n"
 
-  -- TODO staff height bigger, grace notes smaller
-  -- title/author/style
+-- TODO staff height bigger
 renderScore :: Score -> L.Music
 renderScore (Score details signature ps) =
   let content =
@@ -73,7 +83,7 @@ renderScore (Score details signature ps) =
                                          L.Slash1 "Score",
                                          L.Slash1 "consists #(bars-per-line-engraver '(4))",
                                          L.Slash1 "omit BarNumber",
-                                         L.Override "GraceSpacing.spacing-increment" (L.toValue (0.2::Double)),
+                                         L.Override "GraceSpacing.spacing-increment" (L.toValue (0.0::Double)),
                                          L.Field "proportionalNotationDuration" (L.toLiteralValue "#(ly:make-moment 1/8)")
                                          ]]]
       header = slashBlock "header" (renderDetails details <> [L.Field "tagline" (L.toValue "")])
@@ -118,16 +128,22 @@ restoring ma =
 
 beginScore :: Signature -> [L.Music] -> [L.Music]
 beginScore signature i =
-  [
-    L.New "Staff" Nothing (
-      slashBlock "with" [
-           L.Override "StaffSymbol.line-count" (L.toValue (1::Int))
-          ,L.Override "Stem.direction" (L.toValue (-1::Int))
-          ,L.Override "StemTremolo.slope" (L.toValue (0.25::Double))
-           -- ,L.Override "StemTremolo.Y-offset" (L.toValue (-0.8))
-          ]
-      )
-  , L.Sequential ( [clefOff, L.Clef L.Percussion] <> beginTime signature <> [beamPositions]  <> i) ]
+  [L.New "Staff"
+         Nothing
+         (slashBlock
+            "with"
+            [L.Override "StaffSymbol.line-count" (L.toValue (1 :: Int))
+            ,L.Override "Stem.direction" (L.toValue (-1 :: Int))
+            ,L.Override "StemTremolo.beam-thickness" (L.toValue (0.3 :: Double))
+            ,L.Override "StemTremolo.slope" (L.toValue (0.35 :: Double))
+            -- ,L.Override "StemTremolo.Y-offset" (L.toValue ( 0.8))
+            ])
+  ,
+   L.Sequential
+     ([clefOff,L.Clef L.Percussion, L.Slash1 "tiny"] <>
+      beginTime signature <>
+      [beamPositions] <>
+      i)]
   where clefOff = L.Slash1 "hide Staff.Clef"
 
 setMomentAndStructure :: Integer -> [Integer] -> [L.Music]
@@ -159,11 +175,12 @@ renderManyBeameds bs =
                  return $! renderBeamed notes
 
 resolveMods :: Beamed -> State [NoteMod] (S.Seq Note)
-resolveMods b =
-          do mods <- get
-             let Beamed notes leftoverMods = Beamed mempty mods <> b
-             put leftoverMods
-             return notes
+resolveMods (Beamed b) =
+            flip (traverse . _NoteHead) b $ \nh ->
+                do mods <- get
+                   let v = applyMods mods nh
+                   put (nh^.noteHeadMods)
+                   return (v & noteHeadMods .~ [])
 
 renderBeamed :: S.Seq Note -> [L.Music]
 renderBeamed =

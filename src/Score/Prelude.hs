@@ -63,10 +63,10 @@ restn = beam . Rest
 triplet :: Beamed -> Beamed
 triplet = tuplet 3 2
 
-tuplet a b (Beamed n m) = Beamed (pure $ Tuplet (a % b) n) m
+tuplet a b (Beamed n) = Beamed (pure $ Tuplet (a % b) n)
 
 aNote :: Hand -> Ratio Integer -> Note
-aNote h d = Note $ NoteHead h False False d False False Nothing
+aNote h d = Note $ NoteHead h False False d False False Nothing mempty
 
 -- | Note modifiers
 
@@ -76,7 +76,7 @@ startRoll = buzz . (_NoteHead . noteHeadSlurBegin .~ True)
 
 endRoll = _NoteHead . noteHeadSlurEnd .~ True
 
-roll = (beamedMods %~ (EndRoll:)) . startRoll
+roll = (_NoteHead . noteHeadMods %~ (EndRoll:)) . startRoll
 
 flam = _NoteHead . noteHeadEmbellishment .~ Just Flam
 
@@ -94,7 +94,7 @@ cut = _Duration %~ (* (1/2))
 
 singles :: Int -> Beamed -> Beamed
 singles n _ | n < 0 = error "bow bow"
-singles 0 _ = Beamed mempty mempty
+singles 0 _ = Beamed mempty
 singles n x = x <> singles (n-1) (x & swapHands)
 
 h2h startNote fs = singles (Prelude.length fs) startNote & zap fs

@@ -47,7 +47,9 @@ data NoteHead =
            ,_noteHeadDuration :: Ratio Integer
            ,_noteHeadSlurBegin :: Bool
            ,_noteHeadSlurEnd :: Bool
-           ,_noteHeadEmbellishment :: Maybe Embellishment}
+           ,_noteHeadEmbellishment :: Maybe Embellishment
+           -- these should be applied to the note after this one
+           ,_noteHeadMods :: [NoteMod]}
   deriving (Eq,Show)
 
 data Note = Note NoteHead
@@ -60,12 +62,11 @@ data NoteMod = EndRoll deriving (Eq, Show)
 
 -- TODO should be non empty
 data Beamed =
-  Beamed {_beamedNotes :: Seq Note
-         ,_beamedMods :: [NoteMod]}
+  Beamed {_beamedNotes :: Seq Note }
   deriving (Eq,Show)
 
 beam :: Note -> Beamed
-beam = flip Beamed mempty . pure
+beam = Beamed . pure
 
 data Part =
   Part {_partAnacrusis :: Maybe Beamed
@@ -126,6 +127,12 @@ class AsBeamed p f s where
   _Beamed ::
     Optic' p f s Beamed
 
+instance AsBeamed p f Beamed where _Beamed = id
+instance (Applicative f, p ~ (->)) => AsBeamed p f (Seq Beamed) where _Beamed = traverse . _Beamed
+
+instance (Applicative f, p ~ (->)) => AsBeamed p f ([Beamed]) where _Beamed = traverse . _Beamed
+
+
 class AsSignature p f s where
   _Signature :: Optic' p f s Signature
 
@@ -141,7 +148,7 @@ instance (p ~ (->),Applicative f) => AsHand p f Note where
   _Hand f (Tuplet r n) = Tuplet r <$> (traverse . _NoteHead . _Hand) f n
 
 instance (p ~ (->),Applicative f) => AsHand p f Beamed where
-  _Hand f (Beamed n m) = Beamed <$> (traverse . _Hand) f n <*> pure m
+  _Hand f (Beamed n) = Beamed <$> (traverse . _Hand) f n -- <*> pure m
 
 instance AsDuration p f Duration where
   _Duration = id
@@ -155,7 +162,7 @@ instance (p ~ (->),Applicative f) => AsDuration p f Note where
   _Duration f (Tuplet r n) = Tuplet r <$> (traverse . _Duration) f n
 
 instance (p ~ (->),Applicative f) => AsDuration p f Beamed where
-  _Duration f (Beamed n m) = Beamed <$> (traverse . _Duration) f n <*> pure m
+  _Duration f (Beamed n) = Beamed <$> (traverse . _Duration) f n -- <*> pure m
 
 instance AsNoteHead p f NoteHead where
   _NoteHead = id
@@ -171,7 +178,7 @@ instance (Applicative f) => AsNoteHead (->) f Beamed where
 instance (Applicative f) => AsNoteHead (->) f (Seq Beamed) where
   _NoteHead = traverse . _NoteHead
 
-instance (Applicative f) => AsNoteHead (->) f ([Beamed]) where
+instance (Applicative f) => AsNoteHead (->) f [Beamed] where
   _NoteHead = traverse . _NoteHead
 
 instance (Applicative f) => AsNoteHead (->) f Part where
@@ -204,14 +211,5 @@ applyMods :: [NoteMod] -> NoteHead -> NoteHead
 applyMods xs a =
   foldl' (\h EndRoll -> h & noteHeadSlurEnd .~ True) a xs
 
--- TODO: this needs a good test
 instance Semigroup Beamed where
-  Beamed a p <> Beamed b q =
-    let noNotesOnRight = nullOf (traverse . _NoteHead) b
-     in if noNotesOnRight
-           then Beamed (a <> b) (p <> q)
-           else Beamed (a <> (b & elementOf (traverse . _NoteHead) 0 %~ applyMods p)) q
-
-     -- in if nullOf (traverse . _NoteHead) notes
-     --       then Beamed notes (p <> q)
-     --       else Beamed (notes & elementOf (traverse . _NoteHead) 0 %~ applyMods p) q
+  Beamed a <> Beamed b = Beamed (a <> b)
