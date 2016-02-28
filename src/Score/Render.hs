@@ -18,13 +18,9 @@ import           Text.Pretty
 
 -- TODO:
 -- * unisons
--- * prettier fonts
+-- * prettier fonts - http://lilypond.1069038.n5.nabble.com/Change-font-of-titles-composer-etc-td25870.html
 -- * tweak note styles to look like this: http://drummingmad.com/what-are-unisons/
-
-
--- | STYLE
-
-
+-- * dynamics
 
 data Orientation = Portrait | Landscape deriving (Eq, Show)
 
