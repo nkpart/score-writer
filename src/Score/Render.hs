@@ -1,5 +1,4 @@
 {-# LANGUAGE FlexibleContexts #-}
-{-# OPTIONS_GHC -Wwarn #-}
 module Score.Render (
   printScorePage, Orientation(..)
   ) where
@@ -81,7 +80,8 @@ renderScore (Score details signature ps) =
                                          L.Slash1 "omit BarNumber",
                                          L.Override "GraceSpacing.spacing-increment" (L.toValue (0.0::Double)),
                                          L.Field "proportionalNotationDuration" (L.toLiteralValue "#(ly:make-moment 1/8)")
-                                         ]]]
+                                         ]
+                   ]]
       header = slashBlock "header" (renderDetails details <> [L.Field "tagline" (L.toValue "")])
    in slashBlock "score" (content ++ [header] ++ styles)
 
@@ -138,9 +138,28 @@ beginScore signature i =
    L.Sequential
      ([clefOff,L.Clef L.Percussion, L.Slash1 "tiny"] <>
       beginTime signature <>
+      spannerStyles <>
       [beamPositions] <>
       i)]
   where clefOff = L.Slash1 "hide Staff.Clef"
+        -- turn text spanners into unison marks
+        spannerStyles = [
+          L.Override "TextSpanner.style" (L.toLiteralValue "#'line'")
+         ,L.Override "TextSpanner.bound-details.left.text" $ L.toLiteralValue "\\markup { \\draw-line #'(0 . -1.5) }"
+         ,L.Override "TextSpanner.bound-details.right.text" $ L.toLiteralValue "\\markup { \\draw-line #'(0 . -1.5) }"
+         ,L.Override "TextSpanner.bound-details.right.padding" (L.toValue (-0.5::Double))
+         ,L.Override "TextSpanner.bound-details.right.attach-dir" (L.toValue (1::Int))
+         -- ,L.Override "TextSpanner.bound-details.left.padding" (L.toValue (-0.5::Double))
+         ,L.Override "TextSpanner.thickness" (L.toValue (2::Int))
+         ,L.Override "TextSpanner.color" $ L.toLiteralValue "#(x11-color 'orange)"
+
+         ,L.Raw "\\override Staff.OttavaBracket #'edge-height = #'(1.2 . 1.2)"
+         ,L.Raw "\\override Staff.OttavaBracket #'bracket-flare = #'(0 . 0)"
+         ,L.Raw "\\override Staff.OttavaBracket #'dash-fraction = #1.0"
+         ,L.Raw "\\override Staff.OttavaBracket #'shorten-pair  = #'(-0.4 . -0.4)"
+         ,L.Raw "\\override Staff.OttavaBracket #'staff-padding = #3.0"
+         ,L.Raw "\\override Staff.OttavaBracket #'minimum-length  = #1.0"
+           ]
 
 setMomentAndStructure :: Integer -> [Integer] -> [L.Music]
 setMomentAndStructure moment momentGroups =
@@ -185,28 +204,29 @@ renderBeamed =
   . addBeams
   . fmap renderNote
 
-data RenderedNote = Graced (Maybe L.Music) L.Music
+type PrePost = (S.Seq L.Music, S.Seq L.Music)
+data RenderedNote = Graced (Maybe L.Music) PrePost (S.Seq L.Music)
                   | Tupleted Int Int (S.Seq RenderedNote)
 
 notesOnly :: Traversal' RenderedNote L.Music
-notesOnly f (Graced mb n) = Graced mb <$> f n
+notesOnly f (Graced mb x n) = Graced mb x <$> traverse f n
 notesOnly f (Tupleted n d xs) = Tupleted n d <$> (traverse . notesOnly) f xs
 
 firstMusic :: Traversal' RenderedNote L.Music
-firstMusic f (Graced mb n) = Graced mb <$> f n
+firstMusic f (Graced mb x n) = Graced mb x <$> traverse f n
 firstMusic f (Tupleted n d xs) = case F.toList xs of
                                    [] -> pure (Tupleted n d xs)
                                    (h:t) -> fmap (\x' -> Tupleted n d $ S.fromList (x':t)) (firstMusic f h)
 
 lastMusic :: Traversal' RenderedNote L.Music
-lastMusic f (Graced mb n) = Graced mb <$> f n
+lastMusic f (Graced mb x n) = Graced mb x <$> traverse f n
 lastMusic f (Tupleted n d xs) =
   let xs' = F.toList xs
    in Tupleted n d . S.fromList <$> (_last . lastMusic) f xs'
 
 buildMusic :: S.Seq RenderedNote -> S.Seq L.Music
 buildMusic rns = rns >>= f
-  where f (Graced mb l) = maybe (pure l) (\v -> S.fromList [v,l]) mb
+  where f (Graced mb (pre', post) l) = pre' <> maybe l (\v -> v S.<| l ) mb <> post
         f (Tupleted n d more) =
           -- TODO: grace notes need to be rendered outside of the tuplet
           pure $
@@ -221,8 +241,27 @@ addBeams rn =
 
 renderNote :: Note -> RenderedNote
 renderNote (Note h) = renderNoteHead h
-renderNote (Rest n) = Graced Nothing (L.Rest (Just $ L.Duration n) [])
+renderNote (Rest n) = Graced Nothing mempty (pure $ L.Rest (Just $ L.Duration n) [])
 renderNote (Tuplet r h) = Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) (fmap renderNote h)
+renderNote (U u) = renderUnison u
+
+renderUnison :: Unison -> RenderedNote
+renderUnison u =
+  let su =
+          S.fromList
+         [
+             L.Raw "\\ottava #1"
+           , L.Set "Staff.middleCPosition" (L.toValue (0::Int))
+           , L.Set "Staff.ottavation" (L.toValue "")
+         ]
+      eu =
+         S.fromList
+         [
+           L.Raw "\\ottava #0"
+         ]
+  in case u of
+           StartUnison -> Graced Nothing (su, mempty) mempty
+           StopUnison -> Graced Nothing (mempty, eu) mempty
 
 renderNoteHead :: NoteHead -> RenderedNote
 renderNoteHead n =
@@ -268,7 +307,7 @@ renderNoteHead n =
       finalNote =
         startTie . endTie $ thisHead
 
-  in Graced embell finalNote
+  in Graced embell mempty (pure finalNote)
 
 leftPitch :: L.Pitch
 leftPitch = L.Pitch (L.B, 0, 4)

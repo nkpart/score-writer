@@ -358,12 +358,13 @@ pmDonaldMacleanOfLewis =
      where
          p1 = buildPart $ do
            upbeat l8
+           upbeat l8
            bars (firstBeginning <> firstEnding <> firstBeginning <> secondEnding) 
            thenRepeat
 
          firstBeginning =
-                  [r8&flam.dot <-> r8&roll.cut <-> r8, l4&flam, r8&roll
-                  ,triplet (l8 & accent <-> r8 <-> l8) <-> r8 & flam , l8 & flam.dot <-> r8 & cut <-> l8]
+                  [r8&flam.dot<-> r8&roll.cut <-> r8, l4&flam, r8&roll
+                  ,triplet (l8 & accent <-> r8 <-> l8) <-> r8 & flam , l8 & flam.dot<-> r8 & cut <-> l8]
          p2 = buildPart $ do
            let beginning =
                  [r4 & roll. dot, r4 , r8 & roll,

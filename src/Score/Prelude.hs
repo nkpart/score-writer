@@ -65,6 +65,12 @@ triplet = tuplet 3 2
 
 tuplet a b (Beamed n) = Beamed (pure $ Tuplet (a % b) n)
 
+startUnison = Beamed (pure $ U StartUnison)
+
+stopUnison = Beamed (pure $ U StopUnison)
+
+thisUnison x = startUnison <-> x <-> stopUnison
+
 aNote :: Hand -> Ratio Integer -> Note
 aNote h d = Note $ NoteHead h False False d False False Nothing mempty
 

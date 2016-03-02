@@ -40,6 +40,9 @@ data Embellishment
   | Ruff
   deriving (Eq,Show)
 
+data Unison =
+  StartUnison | StopUnison deriving (Eq, Show)
+
 data NoteHead =
   NoteHead {_noteHeadHand :: Hand
            ,_noteHeadAccent :: Bool
@@ -55,8 +58,8 @@ data NoteHead =
 data Note = Note NoteHead
           | Tuplet (Ratio Integer) (Seq Note)
           | Rest (Ratio Integer)
+          | U Unison
             deriving (Eq, Show)
-
 
 data NoteMod = EndRoll deriving (Eq, Show)
 
@@ -146,6 +149,8 @@ instance (p ~ (->),Applicative f) => AsHand p f Note where
   _Hand f (Note n) = Note <$> _Hand f n
   _Hand _ (Rest n) = pure (Rest n)
   _Hand f (Tuplet r n) = Tuplet r <$> (traverse . _NoteHead . _Hand) f n
+  _Hand _ (U u) = pure (U u)
+  -- _Hand _ StopUnison = pure StopUnison
 
 instance (p ~ (->),Applicative f) => AsHand p f Beamed where
   _Hand f (Beamed n) = Beamed <$> (traverse . _Hand) f n -- <*> pure m
@@ -160,6 +165,8 @@ instance (p ~ (->),Applicative f) => AsDuration p f Note where
   _Duration f (Note n) = Note <$> _Duration f n
   _Duration f (Rest n) = Rest <$> f n
   _Duration f (Tuplet r n) = Tuplet r <$> (traverse . _Duration) f n
+  _Duration _ (U u) = pure (U u)
+  -- _Duration _ StopUnison = pure StopUnison
 
 instance (p ~ (->),Applicative f) => AsDuration p f Beamed where
   _Duration f (Beamed n) = Beamed <$> (traverse . _Duration) f n -- <*> pure m
@@ -171,6 +178,8 @@ instance Applicative f => AsNoteHead (->) f Note where
   _NoteHead f (Note h) = Note <$> f h
   _NoteHead _ (Rest n) = pure (Rest n)
   _NoteHead f (Tuplet d ns) = Tuplet d <$> (traverse . _NoteHead) f ns
+  _NoteHead _ (U u) = pure (U u)
+  -- _NoteHead _ StopUnison = pure StopUnison
 
 instance (Applicative f) => AsNoteHead (->) f Beamed where
   _NoteHead = beamedNotes . traverse . _NoteHead
