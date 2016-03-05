@@ -284,23 +284,27 @@ missGirdle =
         (Just "BBC OCA Pipe Band"))
         (Signature 2 2)
         [p1, p2]
-  where 
+  where f = flam
+        a = accent
+        fa = accent . flam
+        r = roll
+        ar = accent . roll
         p1 = buildPart $
-          do bars [r4&roll.accent,l8<->l8, r8&flam<->l8&flam<->r8<->l8]
-             bars [r4&roll.accent,l8<->l8, r8&flam<->r8&drag<->singles 4 r16]
-             bars [r4&accent,r8&flam<->l8, r8<->l8&flam<->r8<->l8]
-             bars [r8&flam<->r8&roll, r8<->l8&flam, r8<->l8&flam<->r8&flam<->l8]
+          do bars [r4&ar,l8<->l8, r8&f<->l8&f<->r8<->l8]
+             bars [r4&ar,l8<->l8, r8&f<->r8&drag<->singles 4 r16]
+             bars [r4&a,r8&f<->l8, r8<->l8&f<->r8<->l8]
+             bars [r8&f<->r8&r, r8<->l8&f, r8<->l8&f<->r8&f<->l8]
              thenRepeat
         p2 = buildPart $
-          do bars [para r16&zapN 0 flam, l8<->l8&flam, r8<->l8&flam, r4&flam]
-             bars [r8&roll<->r8 <-> l8<->r8&flam, l8<->r8&drag <-> r8<->l8]
-             bars [para r16&zapN 0 flam, l8<->l8&flam, r8<->l8&flam, r4&flam]
-             bars [r8&flam<->r8&roll, r8<->l8&flam, r8<->l8&flam<->r8&flam<->l8]
+          do bars [startUnison, para r16&zapN 0 f, l8<->l8&f, r8<->l8&f, r4&f, stopUnison]
+             bars [r8&r<->r8 <-> l8<->r8&f, l8<->r8&drag <-> r8<->l8]
+             bars [startUnison, para r16&zapN 0 f, l8<->l8&f, r8<->l8&f, r4&f, stopUnison]
+             bars [r8&f<->r8&r, r8<->l8&f, r8<->l8&f<->r8&f<->l8]
 
-             bars [para r16&zapN 0 flam, l8<->l8&flam, r8<->l8&flam, r4&flam]
-             bars [r8&roll<->r8 <-> l8<->r8&flam, l8<->r8&drag <-> r8<->l8]
-             bars [r4&flam,r8&flam<->l8, r8<->l8&flam<->r8<->l8]
-             bars [r8&flam<->r8&roll, r8<->l8&flam, r2&roll]
+             bars [para r16&zapN 0 f, l8<->l8&f, r8<->l8&f, r4&f]
+             bars [r8&r<->r8 <-> l8<->r8&f, l8<->r8&drag <-> r8<->l8]
+             bars [r4&f,r8&f<->l8, r8<->l8&f<->r8<->l8]
+             bars [r8&f<->r8&r, r8<->l8&f, r2&r]
 
 pmGeorgeAllan :: Score
 pmGeorgeAllan =
@@ -310,11 +314,17 @@ pmGeorgeAllan =
          (Just "BBC OCA Pipe Band"))
          (Signature 2 2)
          [p1, p2]
-   where p1 = buildPart $ do
+   where f = flam
+         a = accent
+         fa = accent . flam
+         r = roll
+         ar = accent . roll
+         
+         p1 = buildPart $ do
               let first3 = 
-                   [r4&flam, r8&flam<->l8, r8&flam <-> l8&flam.accent <-> r8 <-> l8&flam] <>
-                   [r8&flam.accent<->r8&roll<->r8<->l8&flam.accent, r8<->l8, r4&accent.roll] <>
-                   [l4, r8&ruff<->l8&accent, singles 4 r16, r8&accent<->l8]
+                   [r4&f, r8&f<->l8, r8&f <-> l8&fa <-> r8 <-> l8&f] <>
+                   [r8&fa<->r8&r<->r8<->l8&fa, r8<->l8, r4&ar] <>
+                   [l4, r8&ruff<->l8&a, singles 4 r16, r8&a<->l8]
               bars first3
               bars paraFinish
 
