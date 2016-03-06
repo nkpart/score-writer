@@ -16,25 +16,21 @@ import           Text.Pretty
 
 
 -- TODO:
--- * unisons
 -- * prettier fonts - http://lilypond.1069038.n5.nabble.com/Change-font-of-titles-composer-etc-td25870.html
 -- * tweak note styles to look like this: http://drummingmad.com/what-are-unisons/
 -- * dynamics
+-- * staff height bigger
 
 data Orientation = Portrait | Landscape deriving (Eq, Show)
 
-renderOrientation :: Orientation -> String
-renderOrientation o' = "#(set-default-paper-size \"a4\" '" <> o <> ")"
-  where o =
-          case o' of
-            Portrait -> "portrait"
-            Landscape -> "landscape"
-
 printScorePage :: Orientation -> [Score] -> String
-printScorePage o scores = mappend engraverPrefix stuff
-  where stuff = renderOrientation o <> "\n" <> (runPrinter . pretty . slashBlock "book" $ paperBlock : headerBlock : fmap renderScore scores)
-        paperBlock = slashBlock "paper" [L.Field "print-all-headers" (L.toLiteralValue "##t")]
-        headerBlock = slashBlock "header" [L.Field "tagline" (L.toValue "")]
+printScorePage o scores =
+          engraverPrefix <>
+          renderOrientation o <> "\n" <>
+          (runPrinter . pretty . slashBlock "book" $
+           slashBlock "paper" [L.Field "print-all-headers" (L.toLiteralValue "##t")] :
+           slashBlock "header" [L.Field "tagline" (L.toValue "")] :
+           fmap renderScore scores)
 
 engraverPrefix :: String
 engraverPrefix =
@@ -64,7 +60,13 @@ engraverPrefix =
 \}\
 \\n"
 
--- TODO staff height bigger
+renderOrientation :: Orientation -> String
+renderOrientation o' = "#(set-default-paper-size \"a4\" '" <> o <> ")"
+   where o =
+           case o' of
+             Portrait -> "portrait"
+             Landscape -> "landscape"
+
 renderScore :: Score -> L.Music
 renderScore (Score details signature ps) =
   let content =
@@ -84,15 +86,6 @@ renderScore (Score details signature ps) =
                    ]]
       header = slashBlock "header" (renderDetails details <> [L.Field "tagline" (L.toValue "")])
    in slashBlock "score" (content ++ [header] ++ styles)
-
-renderAnacrusis :: Maybe Beamed -> State [NoteMod] [L.Music]
-renderAnacrusis anacrusis =
-    case anacrusis of
-      Nothing -> pure []
-      Just a ->
-        do let duration = sumOf _Duration a
-           bs <- renderManyBeameds (pure a)
-           pure [ L.Partial (round $ 1/duration) (L.Sequential bs) ]
 
 renderDetails :: Details -> [L.Music]
 renderDetails ds = [
@@ -115,12 +108,20 @@ renderPart p =
             st <- r secondTime
             pure $! L.Repeat False 2 thisPart (Just (ft, st))
 
-restoring :: State a b -> State a b
-restoring ma =
-  do s <- get
-     v <- ma
-     put s
-     return v
+renderAnacrusis :: Maybe Beamed -> State [NoteMod] [L.Music]
+renderAnacrusis anacrusis =
+     case anacrusis of
+       Nothing -> pure []
+       Just a ->
+         do let duration = sumOf _Duration a
+            bs <- renderManyBeameds (pure a)
+            pure [ L.Partial (round $ 1/duration) (L.Sequential bs) ]
+
+-- overrideValue :: Show a => String -> a -> L.Music
+-- overrideValue k v = L.Override k (L.toValue v)
+
+-- overrideLiteralValue :: String -> String -> L.Music
+-- overrideLiteralValue k v = L.Override k (L.toLiteralValue v)
 
 beginScore :: Signature -> [L.Music] -> [L.Music]
 beginScore signature i =
@@ -136,29 +137,30 @@ beginScore signature i =
             ])
   ,
    L.Sequential
-     ([clefOff,L.Clef L.Percussion, L.Slash1 "tiny"] <>
-      beginTime signature <>
+     ([L.Slash1 "hide Staff.Clef",
+       L.Clef L.Percussion,
+       L.Slash1 "tiny"] <>
+      renderSignature signature <>
       spannerStyles <>
       [beamPositions] <>
       i)]
-  where clefOff = L.Slash1 "hide Staff.Clef"
-        -- turn text spanners into unison marks
+  where -- turn text spanners into unison marks
         spannerStyles = [
           L.Override "TextSpanner.style" (L.toLiteralValue "#'line'")
          ,L.Override "TextSpanner.bound-details.left.text" $ L.toLiteralValue "\\markup { \\draw-line #'(0 . -1.5) }"
          ,L.Override "TextSpanner.bound-details.right.text" $ L.toLiteralValue "\\markup { \\draw-line #'(0 . -1.5) }"
          ,L.Override "TextSpanner.bound-details.right.padding" (L.toValue (-0.5::Double))
          ,L.Override "TextSpanner.bound-details.right.attach-dir" (L.toValue (1::Int))
-         -- ,L.Override "TextSpanner.bound-details.left.padding" (L.toValue (-0.5::Double))
-         ,L.Override "TextSpanner.thickness" (L.toValue (2::Int))
+         ,L.Override "TextSpanner.thickness" (L.toValue (4::Int))
          ,L.Override "TextSpanner.color" $ L.toLiteralValue "#(x11-color 'orange)"
-
-         ,L.Raw "\\override Staff.OttavaBracket #'edge-height = #'(1.2 . 1.2)"
-         ,L.Raw "\\override Staff.OttavaBracket #'bracket-flare = #'(0 . 0)"
-         ,L.Raw "\\override Staff.OttavaBracket #'dash-fraction = #1.0"
-         ,L.Raw "\\override Staff.OttavaBracket #'shorten-pair  = #'(-0.4 . -0.4)"
-         ,L.Raw "\\override Staff.OttavaBracket #'staff-padding = #3.0"
-         ,L.Raw "\\override Staff.OttavaBracket #'minimum-length  = #1.0"
+         ,L.Override "Staff.OttavaBracket.thickness" $ L.toValue (2::Int)
+         ,L.Override "Staff.OttavaBracket.color" $ L.toLiteralValue "#(x11-color 'OrangeRed)"
+         ,L.Override "Staff.OttavaBracket.edge-height" $ L.toLiteralValue "#'(1.2 . 1.2)"
+         ,L.Override "Staff.OttavaBracket.bracket-flare" $ L.toLiteralValue "#'(0 . 0)"
+         ,L.Override "Staff.OttavaBracket.dash-fraction" $ L.toValue (1.0::Double)
+         ,L.Override "Staff.OttavaBracket.shorten-pair"  $ L.toLiteralValue "#'(-0.4 . -0.4)"
+         ,L.Override "Staff.OttavaBracket.staff-padding" $ L.toValue (3.0::Double)
+         ,L.Override "Staff.OttavaBracket.minimum-length" $ L.toValue (1.0::Double)
            ]
 
 setMomentAndStructure :: Integer -> [Integer] -> [L.Music]
@@ -168,12 +170,14 @@ setMomentAndStructure moment momentGroups =
    in [L.Set "baseMoment" $ L.toLiteralValue mm,
        L.Set "beatStructure" $ L.toLiteralValue $ "#'(" <> structure <> ")"]
 
-beginTime :: Signature -> [L.Music]
-beginTime sig@(Signature n m) = beamStuff <> [L.Time n m]
+renderSignature :: Signature -> [L.Music]
+renderSignature sig@(Signature n m) =
+  [L.Set "strictBeatBeaming" (L.toLiteralValue "##t"),
+   L.Set "subdivideBeams" $ L.toLiteralValue "##t"] <>
+  momentAndStructure <>
+  [L.Time n m]
   where
-        beamStuff = [L.Set "strictBeatBeaming" (L.toLiteralValue "##t"),
-                     L.Set "subdivideBeams" $ L.toLiteralValue "##t"] <> bx
-        bx = case sig of
+    momentAndStructure = case sig of
                 Signature 2 4 -> setMomentAndStructure 8 [2,2,2,2]
                 Signature 2 2 -> setMomentAndStructure 8 [2,2,2,2]
                 Signature 3 4 -> setMomentAndStructure 8 [2, 2, 2]
@@ -320,3 +324,10 @@ beamPositions = L.Override "Beam.positions" (L.toLiteralValue "#'(-3.5 . -3.5)")
 
 slashBlock :: String -> [L.Music] -> L.Music
 slashBlock x b = L.Slash x (L.Sequential b)
+
+restoring :: State a b -> State a b
+restoring ma =
+   do s <- get
+      v <- ma
+      put s
+      return v
