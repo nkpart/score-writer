@@ -15,7 +15,6 @@ import           System.Process
 
 data CLI
   = Watch Orientation FilePath String
-  | Assemble Orientation FilePath String FilePath
 
 cli :: Parser CLI
 cli =
@@ -25,12 +24,7 @@ cli =
                     strArgument (metavar "FILE") <*>
                     strArgument (metavar "VALUE"))
                    (progDesc "Watch a score for changes, preview when it does"))
-    ,command "assemble"
-             (info (Assemble <$> orientation <*>
-                    strArgument (metavar "FILE") <*>
-                    strArgument (metavar "VALUE") <*>
-                    strArgument (metavar "OUTPUT_FILE"))
-                   (progDesc "Assemble a page of scores"))]
+             ]
   where orientation =
           flag' Portrait (long "portrait") <|>
           flag' Landscape (long "landscape")
@@ -42,8 +36,6 @@ main =
 execCli :: CLI -> IO ()
 execCli (Watch o file valueName) =
   watch o file valueName
-execCli (Assemble o file valueName outputFile) =
-  assemble o file valueName outputFile
 
 watch :: Orientation -> FilePath -> String -> IO ()
 watch o file valueName = do
@@ -60,9 +52,6 @@ watch o file valueName = do
 runInterpreterWoo :: InterpreterT IO c -> IO c
 runInterpreterWoo = runInterpreter >=> throwLeft
 
-assemble :: Orientation -> FilePath -> String -> FilePath -> IO ()
-assemble orientation file valueName outputFile =
-  writeScorePage orientation PDF outputFile =<< runInterpreterWoo (loadScores file valueName)
 
 watchChangesChan :: WatchManager -> EventChannel -> FilePath -> IO ()
 watchChangesChan mgr chan file =
