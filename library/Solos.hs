@@ -18,12 +18,12 @@ jimmyBlue =
   where
     p1 = buildPart $
       do let commonStart = bars
-              [r16 & flam <-> ldrag <-> dotCut (l16 <-> r16 & accent), dotCut (l16<->l16<->r16&drag<->r16&accent)
+              [r8 & flam<->dotCut (l16&ruff<->r16 & accent), dotCut (l16<->l16<->r16&drag<->r16&accent)
               ,dotCut (l16<->r16<->l16&drag<->l16 & accent), singles 4 r32 <-> dotCut (r16 & accent <-> l16)
               ]
          commonStart
          bars [dotCut (h2h r16 [flam,id,flam,flam]), singles 4 r32 <-> singles 4 r32 & accentFirst
-              ,r8&accent.roll<->l8&accent.roll, dotCut (r16&accent.roll<->l16&accent<->r16&accent.roll<->l16&accent)]
+              ,r8&accent.roll<->l8&accent.roll, dotCut (r16&accent.roll<->r16&accent<->l16&accent.roll<->l16&accent)]
          commonStart
          bars ending2
          thenRepeat
@@ -56,7 +56,7 @@ jimmyBlue =
       where firstLine = [
                 r8&flam, rest8, rest8, triplet (r16&flam <-> l16 <-> r16 & flam)
               , r8&flam,  rest8, rest16&dot, r16&cut.drag<->singles 4 r32
-              , r16&flam <-> ldrag <-> dotCut (l16<->l16&accent), singles 4 r32 & accentN 3 <-> singles 4 r32
+              , r8&flam <-> dotCut (l16&ruff<->l16&accent), singles 4 r32 & accentN 3 <-> singles 4 r32
               , r8&roll.accent <-> l8&roll.accent, r8&accent <-> dotCut (r16<-> l16)
               ]
             second2 = twice [para r32&zapN 0 flam<->triplet (l16<->r16<->l16&flam), singles 4 r32 & accentN 3 <-> singles 4 r32 & accentN 3 ]
@@ -77,8 +77,7 @@ jimmyBlue =
 
 ldrag = triplet (l32 <-> r32 <-> r32)
 
-
- -- | Reel
+-- | Reel
 
 mrsMac :: Score
 mrsMac =

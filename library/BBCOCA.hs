@@ -6,8 +6,25 @@
 {-# LANGUAGE TypeFamilies              #-}
 module BBCOCA where
 
-import           Score.Prelude
 import           Control.Monad
+import           Score
+import           Score.Prelude
+
+main :: IO ()
+main =
+  let portrait xs = (Portrait, xs)
+      landscape xs = (Landscape, xs)
+   in
+  do assembleSet "medley2016.pdf" [
+         landscape [innerGuard]
+       , landscape [theCurlew, boysOfTheLough]
+       , landscape [shoshannas, ladyMackenzie]
+       , landscape [missGirdle, pmGeorgeAllan]
+       ]
+     assembleSet "msr2016.pdf" [
+         portrait [_79ths]
+       , landscape [dorrator, lexy]
+       ]
 
 msr2016 :: [[Score]]
 msr2016 = [[_79ths], [dorrator], [lexy]]
@@ -25,7 +42,7 @@ _79ths =
         (Signature 2 4)
         [p1, p2, p3, p4] -- [p1, p2, p3, p4]
   where p1 = buildPart $
-          do 
+          do
              upbeat (dotCut (r16<->l16))
              bars [r8&dot.flam<-> l8&cut, r8&roll<->l8
                   ,su,r4&roll,r8<->eu<->l8]
@@ -339,9 +356,9 @@ pmGeorgeAllan =
          fa = accent . flam
          r = roll
          ar = accent . roll
-         
+
          p1 = buildPart $ do
-              let first2 = 
+              let first2 =
                    [su, r4&f, r8&f<->eu<->l8, r8&f <-> l8&fa <-> r8 <-> l8&f] <>
                    [r8&fa<->r8&r<->r8<->l8&fa, r8<->l8, su, r4&ar]
               bars first2
@@ -390,7 +407,7 @@ pmDonaldMacleanOfLewis =
          p1 = buildPart $ do
            upbeat (l8 & thisUnison)
            upbeat l8
-           bars (firstBeginning <> firstEnding <> firstBeginning <> secondEnding) 
+           bars (firstBeginning <> firstEnding <> firstBeginning <> secondEnding)
            thenRepeat
 
          firstBeginning =

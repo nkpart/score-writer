@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE QuasiQuotes #-}
 {-# OPTIONS_GHC -Wwarn #-}
 module Score.Prelude
        (
