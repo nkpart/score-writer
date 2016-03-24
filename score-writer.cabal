@@ -30,6 +30,8 @@ library
                      , semigroups
                      , vector-space
                      , temporary
+                     , parsers
+                     , trifecta
   default-language:    Haskell2010
   ghc-options: -O2 -Wall -Werror
 
