@@ -101,15 +101,16 @@ mrsMac =
     t3 = triplet
     p1 = buildPart $
      do let f2 = do
-                bars [notes| 4 ^fR, 8 .L ^-R, .L -L .f^R -L |]
-                bars [notes| 4 ~R, 8 .L -^L, 16 R L R L 8 ^.R -L |]
+                bars [notes| 4R^f, 8L. R-^, L. L- R.f^ L- |]
+                bars [notes| 4R~, 8L. L-^, 16R L R L 8R^. L- |]
         f2
-        bars [notes| 4 f^R, 16 R L R L, 8 .R -L .f^R -~R |]
-        bars [dc(r8<->fa r8<->l8<->fa l8), rlrl_16<->dc(a r8<->l8)]
+        bars [notes| 4Rf^, 16R L R L, 8R. L- R.f^ R-~ |]
+        bars [notes| 8R. Rf^- L. Lf^-, 16R L R L 8R^. L- |]
 
         f2
-        bars [fa r4, rlrl_16, dc(r8<->l8)<->t3(r8&a<->l8<->r8)]
-        bars [t3(l8<->r8<->a l8)<->rlrl_16, ar r4, a l4]
+        bars [notes| 4Rf^, 16R L R L, 8R. L- { R^ L R }  |]
+        bars [notes| { 8L R L^ } 16R L R L, 4R^~, L^ |]
+
     p2 = buildPart $
      do let f2 = do
                  bars [r4&r, dc(l8<->r8&r), dc(r8<->l8), r4&r]
@@ -158,10 +159,8 @@ mrsMac =
         bars [dc(r8<->fa r8<->l8<->fa l8), rlrl_16, a r4]
 
     p6 = buildPart $
-     do bars $ [tuplet 6 4 (singles 6 r8), rlrl_16 <-> t3 (r8<->l8<->r8)]
-          & zap [a, id, id, id, id, a,     id, id, id, id,            a]
-        bars $ [t3 (singles 3 l8) <-> rlrl_16, t3 (singles 3 r8)<-> dc(l8<->l8)]
-          & zap [id, id, a, id, id, id, id, id, id, a]
+     do bars [notes| { 8R^ L R L R L^ }, 16R L R L { 8R L R } |]
+        bars [notes| { 8L R L^ } 16R L R L, { 8R L R^ } L. L- |]
         bars $ [r8 <-> rlrl_16 <-> r8, rlrl_16 <-> dc (r8<->l8)]
           & zap [drag, a, id, id, id, drag, id, id, id, id, a]
         bars $ [r8 <-> rlrl_16 <-> r8, rlrl_16 <-> dc (r8<->l8)]

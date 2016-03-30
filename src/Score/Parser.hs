@@ -12,17 +12,16 @@ import Data.Functor
 import Data.List.NonEmpty as NE
 import Control.Applicative
 
--- TODO remove space after durations, use 'decimal' frmo token parsing
 examples :: [(String, Beamed)]
 examples =
-  [("16 .R", P.dot r16)
-  ,("16 .R 8 -L", P.dot r16 <-> P.cut l8)
-  ,("16 R L", r16 <-> l16)
+  [("16R.", P.dot r16)
+  ,("16R. 8L-", P.dot r16 <-> P.cut l8)
+  ,("16R L", r16 <-> l16)
   ]
 
 ex2 :: [(String, [Beamed])]
 ex2 =
-  [("16 .R, .R", [P.dot r16, P.dot r16])
+  [("16R., R.", [P.dot r16, P.dot r16])
   ]
 
 -- |
@@ -58,26 +57,25 @@ endUnison = symbol ")u" $> [P.stopUnison]
 
 note :: (MonadState Integer m, TokenParsing m) => m [Beamed]
 note = fmap pure $ token $
-           do mods <- (appEndo . foldMap Endo) <$> many noteMod
-              h <- noteHand
+           do h <- noteHand
+              mods <- (appEndo . foldMap Endo) <$> many noteMod
               duration <- get
               pure . mods . beam $ aNote h (1%duration)
 
 -- |
 ---------------------------
 
-on :: CharParsing f => Char -> b -> f b
-on ch f = char ch $> f
+parseTriplet :: (MonadState Integer f, TokenParsing f) => f [Beamed]
+parseTriplet = pure . triplet <$> braces parseBeamed
 
-parseBeamed :: StateT Integer Parser Beamed
+parseBeamed :: (MonadState Integer f, TokenParsing f) => f Beamed
 parseBeamed =
-   do ns <- join <$> many (setDuration <|> note)
+   do ns <- join <$> many (setDuration <|> note <|> parseTriplet)
       return $ maybe (Beamed mempty) sconcat $ NE.nonEmpty ns
 
 parseBeams :: StateT Integer Parser [Beamed]
 parseBeams =
-  whiteSpace *>
-  sepBy parseBeamed (symbol ", ")
+  whiteSpace *> sepBy parseBeamed (symbol ", ")
 
 runBeamedParser :: String -> IO [Beamed]
 runBeamedParser input =
@@ -86,6 +84,10 @@ runBeamedParser input =
    in case v of
         Success e -> return e
         Failure d -> fail (show d)
+
+on :: CharParsing f => Char -> b -> f b
+on ch f = char ch $> f
+
 
 main :: IO ()
 main =
