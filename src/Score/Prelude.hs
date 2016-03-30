@@ -16,7 +16,6 @@ import Control.Lens as X hiding (para)
 import Data.Semigroup as X
 import Data.Ratio
 import Control.Monad.Writer hiding ((<>))
-import Data.Sequence hiding (zipWith)
 
 (<->) = (<>)
 
@@ -124,16 +123,16 @@ buildPart ma = appEndo (execWriter ma) (Part Nothing mempty NoRepeat)
 
 upbeat v = writeF (partAnacrusis .~ Just v)
 
-bars :: Seq Beamed -> PartM ()
+bars :: [Beamed] -> PartM ()
 bars bs = writeF (partBeams %~ (\x -> bs <> x))
 
-firstTime :: Seq Beamed -> PartM ()
+firstTime :: [Beamed] -> PartM ()
 firstTime x = writeF (partRepeat %~ f)
   where f NoRepeat = Return (x, mempty)
         f Repeat = Return (x, mempty)
         f (Return (p,q)) = Return (p <> x, q)
 
-secondTime :: Seq Beamed -> PartM ()
+secondTime :: [Beamed] -> PartM ()
 secondTime x = writeF (partRepeat %~ f)
   where f NoRepeat = Return (mempty, x)
         f Repeat = Return (mempty, x)

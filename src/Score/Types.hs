@@ -1,3 +1,4 @@
+{-# LANGUAGE DeriveDataTypeable        #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
@@ -12,10 +13,10 @@ module Score.Types
        where
 
 import           Control.Lens
+import           Data.Data
+import           Data.Foldable  (foldl')
 import           Data.Ratio
 import           Data.Semigroup
-import Data.Foldable (foldl')
-import           Data.Sequence   as S
 
 type Toggle = Maybe Bool
 
@@ -28,7 +29,7 @@ toggle f g h = maybe f (\v -> bool v g h)
 data Hand
   = L
   | R
-  deriving (Eq,Show)
+  deriving (Eq, Show, Data, Typeable)
 
 hand :: a -> a -> Hand -> a
 hand a _ L = a
@@ -38,10 +39,10 @@ data Embellishment
   = Flam
   | Drag
   | Ruff
-  deriving (Eq,Show)
+  deriving (Eq, Show, Data, Typeable)
 
 data Unison =
-  StartUnison | StopUnison deriving (Eq, Show)
+  StartUnison | StopUnison deriving (Eq, Show, Data, Typeable)
 
 data NoteHead =
   NoteHead {_noteHeadHand :: Hand
@@ -53,34 +54,34 @@ data NoteHead =
            ,_noteHeadEmbellishment :: Maybe Embellishment
            -- these should be applied to the note after this one
            ,_noteHeadMods :: [NoteMod]}
-  deriving (Eq,Show)
+  deriving (Eq, Show, Data, Typeable)
 
 data Note = Note NoteHead
-          | Tuplet (Ratio Integer) (Seq Note)
+          | Tuplet (Ratio Integer) [Note]
           | Rest (Ratio Integer)
           | U Unison
-            deriving (Eq, Show)
+            deriving (Eq, Show, Data, Typeable)
 
-data NoteMod = EndRoll deriving (Eq, Show)
+data NoteMod = EndRoll deriving (Eq, Show, Data, Typeable)
 
 -- TODO should be non empty
 data Beamed =
-  Beamed {_beamedNotes :: Seq Note }
-  deriving (Eq,Show)
+  Beamed {_beamedNotes :: [Note] }
+  deriving (Eq,Show, Data, Typeable)
 
 beam :: Note -> Beamed
 beam = Beamed . pure
 
 data Part =
   Part {_partAnacrusis :: Maybe Beamed
-       ,_partBeams :: Seq Beamed
+       ,_partBeams :: [Beamed]
        ,_partRepeat :: Repeat}
   deriving (Eq,Show)
 
 data Repeat
   = NoRepeat
   | Repeat
-  | Return (Seq Beamed,Seq Beamed)
+  | Return ([Beamed],[Beamed])
   deriving (Eq,Show)
 
 data Signature = Signature Integer Integer deriving (Eq, Show)
@@ -88,7 +89,7 @@ data Signature = Signature Integer Integer deriving (Eq, Show)
 data Score =
   Score {_scoreDetails :: Details
         ,_scoreSignature :: Signature
-        ,_scoreParts :: Seq Part}
+        ,_scoreParts :: [Part]}
   deriving (Eq,Show)
 
 data Details =
@@ -131,10 +132,8 @@ class AsBeamed p f s where
     Optic' p f s Beamed
 
 instance AsBeamed p f Beamed where _Beamed = id
-instance (Applicative f, p ~ (->)) => AsBeamed p f (Seq Beamed) where _Beamed = traverse . _Beamed
 
-instance (Applicative f, p ~ (->)) => AsBeamed p f ([Beamed]) where _Beamed = traverse . _Beamed
-
+instance (Applicative f, p ~ (->)) => AsBeamed p f [Beamed] where _Beamed = traverse . _Beamed
 
 class AsSignature p f s where
   _Signature :: Optic' p f s Signature
@@ -183,9 +182,6 @@ instance Applicative f => AsNoteHead (->) f Note where
 
 instance (Applicative f) => AsNoteHead (->) f Beamed where
   _NoteHead = beamedNotes . traverse . _NoteHead
-
-instance (Applicative f) => AsNoteHead (->) f (Seq Beamed) where
-  _NoteHead = traverse . _NoteHead
 
 instance (Applicative f) => AsNoteHead (->) f [Beamed] where
   _NoteHead = traverse . _NoteHead

@@ -1,4 +1,5 @@
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE FlexibleContexts #-}
 module Score.Parser where
 
@@ -17,6 +18,11 @@ examples =
   [("16 .R", P.dot r16)
   ,("16 .R 8 -L", P.dot r16 <-> P.cut l8)
   ,("16 R L", r16 <-> l16)
+  ]
+
+ex2 :: [(String, [Beamed])]
+ex2 =
+  [("16 .R, .R", [P.dot r16, P.dot r16])
   ]
 
 -- |
@@ -60,6 +66,7 @@ note = fmap pure $ token $
 -- |
 ---------------------------
 
+on :: CharParsing f => Char -> b -> f b
 on ch f = char ch $> f
 
 parseBeamed :: StateT Integer Parser Beamed
@@ -67,11 +74,31 @@ parseBeamed =
    do ns <- join <$> many (setDuration <|> note)
       return $ maybe (Beamed mempty) sconcat $ NE.nonEmpty ns
 
+parseBeams :: StateT Integer Parser [Beamed]
+parseBeams =
+  whiteSpace *>
+  sepBy parseBeamed (symbol ", ")
+
+runBeamedParser :: String -> IO [Beamed]
+runBeamedParser input =
+  let p = evalStateT parseBeams 4
+      v = parseString p mempty input
+   in case v of
+        Success e -> return e
+        Failure d -> fail (show d)
+
+main :: IO ()
 main =
   do
-    let p = evalStateT parseBeamed 4
-    for_ examples $ \(ex, expected) -> 
-      let v = parseString p mempty ex ^? _Success
-       in print (v == pure expected, v)
+    let parser = evalStateT parseBeamed 4
+    for_ examples $ \(ex, ex') -> 
+      let v = parseString parser mempty ex ^? _Success
+       in print (v == pure ex', v)
+    let parserM = evalStateT parseBeams 4
+    for_ ex2 $ \(ex, ex') -> 
+      let v = parseString parserM mempty ex ^? _Success
+       in do print (v == pure ex')
+             print ex'
+             print v
 
 -- |

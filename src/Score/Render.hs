@@ -9,7 +9,6 @@ import Control.Monad.State.Strict
 import           Data.Semigroup ((<>))
 import qualified Data.Music.Lilypond as L
 import           Data.Ratio
-import qualified Data.Sequence       as S
 import           Data.VectorSpace
 import           Score.Types
 import           Text.Pretty
@@ -193,7 +192,7 @@ renderManyBeameds bs =
   where f b = do notes <- resolveMods b
                  return $! renderBeamed notes
 
-resolveMods :: Beamed -> State [NoteMod] (S.Seq Note)
+resolveMods :: Beamed -> State [NoteMod] [Note]
 resolveMods (Beamed b) =
             flip (traverse . _NoteHead) b $ \nh ->
                 do mods <- get
@@ -201,16 +200,15 @@ resolveMods (Beamed b) =
                    put (nh^.noteHeadMods)
                    return (v & noteHeadMods .~ [])
 
-renderBeamed :: S.Seq Note -> [L.Music]
+renderBeamed :: [Note] -> [L.Music]
 renderBeamed =
-    F.toList
-  . buildMusic
+    buildMusic
   . addBeams
   . fmap renderNote
 
-type PrePost = (S.Seq L.Music, S.Seq L.Music)
-data RenderedNote = Graced (Maybe L.Music) PrePost (S.Seq L.Music)
-                  | Tupleted Int Int (S.Seq RenderedNote)
+type PrePost = ([L.Music], [ L.Music ])
+data RenderedNote = Graced (Maybe L.Music) PrePost [L.Music]
+                  | Tupleted Int Int [RenderedNote]
 
 notesOnly :: Traversal' RenderedNote L.Music
 notesOnly f (Graced mb x n) = Graced mb x <$> traverse f n
@@ -220,23 +218,23 @@ firstMusic :: Traversal' RenderedNote L.Music
 firstMusic f (Graced mb x n) = Graced mb x <$> traverse f n
 firstMusic f (Tupleted n d xs) = case F.toList xs of
                                    [] -> pure (Tupleted n d xs)
-                                   (h:t) -> fmap (\x' -> Tupleted n d $ S.fromList (x':t)) (firstMusic f h)
+                                   (h:t) -> fmap (\x' -> Tupleted n d (x':t)) (firstMusic f h)
 
 lastMusic :: Traversal' RenderedNote L.Music
 lastMusic f (Graced mb x n) = Graced mb x <$> traverse f n
 lastMusic f (Tupleted n d xs) =
   let xs' = F.toList xs
-   in Tupleted n d . S.fromList <$> (_last . lastMusic) f xs'
+   in Tupleted n d <$> (_last . lastMusic) f xs'
 
-buildMusic :: S.Seq RenderedNote -> S.Seq L.Music
+buildMusic :: [RenderedNote] -> [L.Music]
 buildMusic rns = rns >>= f
-  where f (Graced mb (pre', post) l) = pre' <> maybe l (\v -> v S.<| l ) mb <> post
+  where f (Graced mb (pre', post) l) = pre' <> maybe l (\v -> v : l ) mb <> post
         f (Tupleted n d more) =
           -- TODO: grace notes need to be rendered outside of the tuplet
           pure $
           L.Tuplet n d (L.Sequential . F.toList . buildMusic $ more)
 
-addBeams :: S.Seq RenderedNote -> S.Seq RenderedNote
+addBeams :: [RenderedNote] -> [RenderedNote]
 addBeams rn =
   if lengthOf (traverse . notesOnly) rn > 1
      then rn & _head . firstMusic %~ L.beginBeam
@@ -252,14 +250,12 @@ renderNote (U u) = renderUnison u
 renderUnison :: Unison -> RenderedNote
 renderUnison u =
   let su =
-          S.fromList
          [
              L.Raw "\\ottava #1"
            , L.Set "Staff.middleCPosition" (L.toValue (0::Int))
            , L.Set "Staff.ottavation" (L.toValue "")
          ]
       eu =
-         S.fromList
          [
            L.Raw "\\ottava #0"
          ]

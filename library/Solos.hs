@@ -1,11 +1,13 @@
-{-# LANGUAGE OverloadedLists           #-}
 {-# LANGUAGE FlexibleContexts          #-}
-{-# LANGUAGE TypeFamilies          #-}
-{-# LANGUAGE NoMonomorphismRestriction          #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE OverloadedLists           #-}
+{-# LANGUAGE QuasiQuotes               #-}
+{-# LANGUAGE TypeFamilies              #-}
 module Solos where
 
-import Score.Prelude hiding (dot, cut)
-import qualified Score.Prelude as P (dot, cut)
+import           Score.Parser.QQ
+import           Score.Prelude   hiding (cut, dot)
+import qualified Score.Prelude   as P (cut, dot)
 
 jimmyBlue :: Score
 jimmyBlue =
@@ -99,10 +101,10 @@ mrsMac =
     t3 = triplet
     p1 = buildPart $
      do let f2 = do
-                bars [fa r4, dc(l8<->a r8), dc(l8<->l8<->fa r8<->l8)]
-                bars [r r4, dc(l8<->a l8), rlrl_16 <-> dc(a r8<->l8)]
+                bars [notes| 4 ^fR, 8 .L ^-R, .L -L .f^R -L |]
+                bars [notes| 4 ~R, 8 .L -^L, 16 R L R L 8 ^.R -L |]
         f2
-        bars [fa r4, rlrl_16, dc(r8<->l8<->fa r8<->r r8)]
+        bars [notes| 4 f^R, 16 R L R L, 8 .R -L .f^R -~R |]
         bars [dc(r8<->fa r8<->l8<->fa l8), rlrl_16<->dc(a r8<->l8)]
 
         f2
@@ -155,7 +157,7 @@ mrsMac =
         bars [f r4,f l4, (zapN 0 a . zapN 5 a) $ tuplet 6 4 (singles 6 r8)]
         bars [dc(r8<->fa r8<->l8<->fa l8), rlrl_16, a r4]
 
-    p6 = buildPart $ 
+    p6 = buildPart $
      do bars $ [tuplet 6 4 (singles 6 r8), rlrl_16 <-> t3 (r8<->l8<->r8)]
           & zap [a, id, id, id, id, a,     id, id, id, id,            a]
         bars $ [t3 (singles 3 l8) <-> rlrl_16, t3 (singles 3 r8)<-> dc(l8<->l8)]
