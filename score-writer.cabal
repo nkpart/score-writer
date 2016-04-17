@@ -65,6 +65,7 @@ test-suite score-writer-test
                      , filepath
                      , score-writer
                      , tasty
+                     , tasty-hunit
                      , tasty-golden
                      , template-haskell
   ghc-options:         -threaded -rtsopts -with-rtsopts=-N

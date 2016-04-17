@@ -1,38 +1,55 @@
-{-# LANGUAGE NoMonomorphismRestriction #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE FlexibleContexts #-}
+{-# language FlexibleContexts #-}
 module Score.Parser where
 
-import           Control.Monad.State.Strict
-import           Data.Foldable
-import Data.Monoid
-import           Score.Prelude              as P
-import           Text.Trifecta as T
-import Data.Functor
-import Data.List.NonEmpty as NE
 import Control.Applicative
+import Control.Monad.State.Strict
+import Data.Foldable
+import Data.Functor
+import Data.Monoid
+import qualified Score.Prelude as P
+import Control.Lens
+import Score.Types
+import Data.Ratio
+import Text.Trifecta as T
 
-examples :: [(String, Beamed)]
-examples =
-  [("16R.", P.dot r16)
-  ,("16R. 8L-", P.dot r16 <-> P.cut l8)
-  ,("16R L", r16 <-> l16)
-  ]
-
-ex2 :: [(String, [Beamed])]
-ex2 =
-  [("16R., R.", [P.dot r16, P.dot r16])
-  ]
-
--- |
+-- | The Parsers!
 ---------------------------
+
+-- | A parser of many beams. The default duration for a note is a quarter.
+defaultParseBeams :: Parser [Beamed]
+defaultParseBeams = evalStateT parseBeams initDuration
+ where initDuration = 4
+
+parseBeams :: StateT Integer Parser [Beamed]
+parseBeams =
+  whiteSpace *> sepBy parseBeamed (symbol ", ")
+
+parseBeamed :: (MonadState Integer f, TokenParsing f) => f Beamed
+parseBeamed =
+   fold . fold <$> many (duration <|> note <|> triplet)
+
+duration :: (MonadState Integer f, TokenParsing f) => f [t]
+duration =
+  (put =<< natural) $> []
+
+-- | Rf~
+note :: (MonadState Integer m, TokenParsing m) => m [Beamed]
+note = fmap pure $ token $
+           do h <- noteHand
+              mods <- (appEndo . foldMap Endo) <$> many noteMod
+              thisDuration <- get
+              pure . mods . P.beam $ P.aNote h (1%thisDuration)
+
+-- | { beam }
+triplet :: (MonadState Integer f, TokenParsing f) => f [Beamed]
+triplet = pure . P.triplet <$> braces parseBeamed
 
 noteHand :: CharParsing f => f Hand
 noteHand =
   on 'R' R <|>
   on 'L' L
 
-noteMod :: (AsNoteHead (->) Identity t,AsDuration (->) Identity t,CharParsing f)
+noteMod :: (P.AsNoteHead (->) Identity t,P.AsDuration (->) Identity t,CharParsing f)
         => f (t -> t)
 noteMod =
   on '.' P.dot <|>
@@ -46,61 +63,25 @@ noteMod =
 -- | Beam tokens
 ---------------------------
 
-setDuration :: (MonadState Integer f, TokenParsing f) => f [t]
-setDuration = (put =<< natural) $> []
-
 startUnison :: TokenParsing f => f [Beamed]
-startUnison = symbol "u(" $> [P.startUnison]
+startUnison =
+  symbol "u(" $>
+  [P.startUnison]
 
 endUnison :: TokenParsing f => f [Beamed]
-endUnison = symbol ")u" $> [P.stopUnison]
+endUnison =
+  symbol ")u" $>
+  [P.stopUnison]
 
-note :: (MonadState Integer m, TokenParsing m) => m [Beamed]
-note = fmap pure $ token $
-           do h <- noteHand
-              mods <- (appEndo . foldMap Endo) <$> many noteMod
-              duration <- get
-              pure . mods . beam $ aNote h (1%duration)
 
--- |
----------------------------
-
-parseTriplet :: (MonadState Integer f, TokenParsing f) => f [Beamed]
-parseTriplet = pure . triplet <$> braces parseBeamed
-
-parseBeamed :: (MonadState Integer f, TokenParsing f) => f Beamed
-parseBeamed =
-   do ns <- join <$> many (setDuration <|> note <|> parseTriplet)
-      return $ maybe (Beamed mempty) sconcat $ NE.nonEmpty ns
-
-parseBeams :: StateT Integer Parser [Beamed]
-parseBeams =
-  whiteSpace *> sepBy parseBeamed (symbol ", ")
-
-runBeamedParser :: String -> IO [Beamed]
-runBeamedParser input =
-  let p = evalStateT parseBeams 4
-      v = parseString p mempty input
-   in case v of
-        Success e -> return e
-        Failure d -> fail (show d)
+-- | Support
 
 on :: CharParsing f => Char -> b -> f b
 on ch f = char ch $> f
 
-
-main :: IO ()
-main =
-  do
-    let parser = evalStateT parseBeamed 4
-    for_ examples $ \(ex, ex') -> 
-      let v = parseString parser mempty ex ^? _Success
-       in print (v == pure ex', v)
-    let parserM = evalStateT parseBeams 4
-    for_ ex2 $ \(ex, ex') -> 
-      let v = parseString parserM mempty ex ^? _Success
-       in do print (v == pure ex')
-             print ex'
-             print v
-
--- |
+runBeamedParser :: String -> Either String [Beamed]
+runBeamedParser input =
+  let v = parseString defaultParseBeams mempty input
+   in case v of
+        Success e -> Right e
+        Failure d -> Left (show d)

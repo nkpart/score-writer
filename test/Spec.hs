@@ -1,19 +1,42 @@
 {-# LANGUAGE OverloadedLists #-}
+
 import           Test.Tasty
+import           Test.Tasty.HUnit
 import           Test.Tasty.Golden
 
-import           Data.Sequence        as S
+import           BBCOCA hiding (main)
+import           Data.Sequence     as S
 import           Score
+import qualified Score.Parser as P
 import           Score.Prelude
 import           System.FilePath
-import           BBCOCA
 
 main :: IO ()
-main = defaultMain tests
+main =
+  defaultMain (testGroup "Tests" [
+                    parserTests
+                  , renderingTests])
 
-tests :: TestTree
-tests =
-  testGroup "all the things"
+parserTests :: TestTree
+parserTests =
+  testGroup "Parsing Tests"
+            (fmap (uncurry parse) examples)
+            where parse input expected =
+                    testCase input (assertEqual "" (P.runBeamedParser input) (Right expected))
+
+                  examples :: [(String, [Beamed])]
+                  examples =
+                    [("16R.", pure $ dot r16)
+                    ,("16R. 8L-", pure $ dot r16 <> cut l8)
+                    ,("16R L", pure $ r16 <> l16)
+                    ,("R L", pure $ r4 <> l4)
+                    ,("16R., R.", [dot r16, dot r16])
+                    ]
+
+
+renderingTests :: TestTree
+renderingTests =
+  testGroup "Rendering Tests"
             [testGroup "Full Rendering"
                        [testScores "Pipe Major Donald Maclean of Lewis"
                                   "pipe-major-donald-maclean-of-lewis.png"
@@ -35,8 +58,6 @@ tests =
                                      (Signature 4 4)
                                      (bars [triplet (singles 4 r16 <-> r8), triplet ( l8 <-> singles 4 r16 ), triplet (singles 6 r16), triplet (r8<->l8<->r8)])
                                   ]
-                         -- testScore "6/8 Jig"
-                         --          "moment-and-structure-68jig.png"
                        ]]
 
 
@@ -47,4 +68,4 @@ testScores name expected scores =
         fullExpected = "test/expected" </> expected
 
 singleParted name sig part =
-  Score (Details name "" "" Nothing) sig (S.fromList [buildPart part])
+  Score (Details name "" "" Nothing) sig [buildPart part]

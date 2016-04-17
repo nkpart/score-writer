@@ -266,7 +266,7 @@ renderUnison u =
 renderNoteHead :: NoteHead -> RenderedNote
 renderNoteHead n =
   let pitch = hand leftPitch rightPitch (n ^. noteHeadHand)
-      oppPitch = hand leftPitch rightPitch (swapHands $ n ^. noteHeadHand)
+      oppPitch = hand rightPitch leftPitch (n ^. noteHeadHand)
       embell = fmap f (n^.noteHeadEmbellishment)
                 where f Flam = slashBlock "grace" [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
                       f Drag =

@@ -65,7 +65,7 @@ data Note = Note NoteHead
 data NoteMod = EndRoll deriving (Eq, Show, Data, Typeable)
 
 -- TODO should be non empty
-data Beamed =
+newtype Beamed =
   Beamed {_beamedNotes :: [Note] }
   deriving (Eq,Show, Data, Typeable)
 
@@ -213,8 +213,13 @@ swapHands :: AsHand (->) Identity s
 swapHands = _Hand %~ swapH
 
 applyMods :: [NoteMod] -> NoteHead -> NoteHead
+
 applyMods xs a =
   foldl' (\h EndRoll -> h & noteHeadSlurEnd .~ True) a xs
 
 instance Semigroup Beamed where
   Beamed a <> Beamed b = Beamed (a <> b)
+
+instance Monoid Beamed where
+  a `mappend` b = a <> b
+  mempty = Beamed mempty
