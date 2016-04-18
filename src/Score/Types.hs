@@ -123,9 +123,7 @@ class AsDuration p f s where
   _Duration ::
     Optic' p f s (Ratio Integer)
 
-class AsNoteHead p f s where
-  _NoteHead ::
-    Optic' p f s NoteHead
+class AsNoteHead p f s where _NoteHead :: Optic' p f s NoteHead
 
 class AsBeamed p f s where
   _Beamed ::

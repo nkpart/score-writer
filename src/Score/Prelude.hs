@@ -1,7 +1,6 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE QuasiQuotes #-}
-{-# OPTIONS_GHC -Wwarn #-}
 module Score.Prelude
        (
          module X,
@@ -16,15 +15,22 @@ import Control.Lens as X hiding (para)
 import Data.Semigroup as X
 import Data.Ratio
 import Control.Monad.Writer hiding ((<>))
+import Control.Lens.Internal.Bazaar
+import Control.Lens.Internal.Indexed
 
+(<->) :: Semigroup a => a -> a -> a
 (<->) = (<>)
 
 infixl 0 <->
 
 -- | General purpose utils
 
+zap :: AsNoteHead (->) (BazaarT (->) Identity NoteHead NoteHead) t
+    => [NoteHead -> NoteHead] -> t -> t
 zap fs = partsOf _NoteHead %~ \vs -> zipWith (\v f -> f v) vs fs
 
+zapN :: AsNoteHead (->) (Indexing Identity) t
+     => Int -> (NoteHead -> NoteHead) -> t -> t
 zapN n f = elementOf _NoteHead n %~ f
 
 -- | Note constructors
@@ -63,12 +69,16 @@ restn = beam . Rest
 triplet :: Beamed -> Beamed
 triplet = tuplet 3 2
 
+tuplet :: Integer -> Integer -> Beamed -> Beamed
 tuplet a b (Beamed n) = Beamed (pure $ Tuplet (a % b) n)
 
+startUnison :: Beamed
 startUnison = Beamed (pure $ U StartUnison)
 
+stopUnison :: Beamed
 stopUnison = Beamed (pure $ U StopUnison)
 
+thisUnison :: Beamed -> Beamed
 thisUnison x = startUnison <-> x <-> stopUnison
 
 aNote :: Hand -> Ratio Integer -> Note
@@ -76,24 +86,34 @@ aNote h d = Note $ NoteHead h False False d False False Nothing mempty
 
 -- | Note modifiers
 
+buzz :: AsNoteHead (->) Identity t => t -> t
 buzz = _NoteHead . noteHeadBuzz .~ True
 
+startRoll :: AsNoteHead (->) Identity c => c -> c
 startRoll = buzz . (_NoteHead . noteHeadSlurBegin .~ True)
 
+endRoll :: AsNoteHead (->) Identity t => t -> t
 endRoll = _NoteHead . noteHeadSlurEnd .~ True
 
+roll :: AsNoteHead (->) Identity c => c -> c
 roll = (_NoteHead . noteHeadMods %~ (EndRoll:)) . startRoll
 
+flam :: AsNoteHead (->) Identity t => t -> t
 flam = _NoteHead . noteHeadEmbellishment .~ Just Flam
 
+drag :: AsNoteHead (->) Identity t => t -> t
 drag = _NoteHead . noteHeadEmbellishment .~ Just Drag
 
+ruff :: AsNoteHead (->) Identity t => t -> t
 ruff = _NoteHead . noteHeadEmbellishment .~ Just Ruff
 
+accent :: AsNoteHead (->) Identity t => t -> t
 accent = _NoteHead . noteHeadAccent .~ True
 
+dot :: AsDuration (->) Identity t => t -> t
 dot = _Duration %~ (* (3/2))
 
+cut :: AsDuration (->) Identity t => t -> t
 cut = _Duration %~ (* (1/2))
 
 -- | Bit builders
@@ -103,12 +123,14 @@ singles n _ | n < 0 = error "bow bow"
 singles 0 _ = Beamed mempty
 singles n x = x <> singles (n-1) (x & swapHands)
 
+h2h :: Beamed -> [NoteHead -> NoteHead] -> Beamed
 h2h startNote fs = singles (Prelude.length fs) startNote & zap fs
 
-dbl startNote fs = (foldl1 (<->) (Prelude.take (Prelude.length fs) $ cycle [startNote, startNote, swapHands startNote, swapHands startNote])) & zap fs
-
+para :: (Semigroup a, AsHand (->) Identity a) => a -> a
 para x = x <-> swapHands x <-> x <-> x
 
+dotCut :: AsNoteHead (->) (BazaarT (->) Identity NoteHead NoteHead) t
+       => t -> t
 dotCut = zap (cycle [dot, cut])
 
 -- | DSL
@@ -121,6 +143,7 @@ writeF f = tell $ Endo f
 buildPart :: PartM a -> Part
 buildPart ma = appEndo (execWriter ma) (Part Nothing mempty NoRepeat)
 
+upbeat :: Beamed -> PartM ()
 upbeat v = writeF (partAnacrusis .~ Just v)
 
 bars :: [Beamed] -> PartM ()

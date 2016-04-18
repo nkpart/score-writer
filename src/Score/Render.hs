@@ -116,12 +116,6 @@ renderAnacrusis anacrusis =
             bs <- renderManyBeameds (pure a)
             pure [ L.Partial (round $ 1/duration) (L.Sequential bs) ]
 
--- overrideValue :: Show a => String -> a -> L.Music
--- overrideValue k v = L.Override k (L.toValue v)
-
--- overrideLiteralValue :: String -> String -> L.Music
--- overrideLiteralValue k v = L.Override k (L.toLiteralValue v)
-
 beginScore :: Signature -> [L.Music] -> [L.Music]
 beginScore signature i =
   [L.New "Staff"

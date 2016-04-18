@@ -61,7 +61,7 @@ noteMod =
   on 'r' P.ruff
 
 -- | Beam tokens
----------------------------
+--------------------
 
 startUnison :: TokenParsing f => f [Beamed]
 startUnison =
@@ -73,8 +73,8 @@ endUnison =
   symbol ")u" $>
   [P.stopUnison]
 
-
 -- | Support
+----------------
 
 on :: CharParsing f => Char -> b -> f b
 on ch f = char ch $> f
