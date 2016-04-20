@@ -22,6 +22,7 @@ library
                        Score.Parser.QQ
                        LilypondProcess
   build-depends:       base >= 4.7 && < 5
+                     , ansi-wl-pprint
                      , containers
                      , lens
                      , lilypond

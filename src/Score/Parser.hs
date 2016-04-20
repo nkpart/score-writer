@@ -11,6 +11,7 @@ import Control.Lens
 import Score.Types
 import Data.Ratio
 import Text.Trifecta as T
+import qualified Text.PrettyPrint.ANSI.Leijen as Pretty hiding (line, (<>), (<$>), empty)
 
 -- | The Parsers!
 ---------------------------
@@ -20,13 +21,37 @@ defaultParseBeams :: Parser [Beamed]
 defaultParseBeams = evalStateT parseBeams initDuration
  where initDuration = 4
 
-parseBeams :: StateT Integer Parser [Beamed]
+-- | A parser of part - optional upbeat, beams, and repeat instructions
+defaultParsePart :: Parser Part
+defaultParsePart = evalStateT parsePart initDuration
+ where initDuration = 4
+
+parsePart :: StateT Integer Parser Part
+parsePart =
+  (P.buildPart . sequence_) <$>
+  (linesOf
+  (
+  -- Upbeat (overlaps regular beams)
+  (try (parseBeamed <* char '/') <&> P.upbeat) <|>
+  -- Regular beams (overlaps firsttime/secondtime markers)
+  (try parseBeams <&> P.bars) <|>
+  -- First time
+  (string "1|" *> T.newline *> linesOf' parseBeams <&> P.firstTime . concat) <|>
+  -- Second time
+  (string "2|" *> T.newline *> linesOf' parseBeams <&> P.secondTime . concat) <|>
+  -- Repeat
+  (symbol ":|" $> P.thenRepeat)
+  )) <* eof
+  where linesOf p = p `sepBy1` T.newline
+        linesOf' p = p `sepEndBy1` T.newline
+
+parseBeams :: (MonadState Integer f, TokenParsing f) => f [Beamed]
 parseBeams =
-  whiteSpace *> sepBy parseBeamed (symbol ", ")
+  sepBy1 parseBeamed (string ", ")
 
 parseBeamed :: (MonadState Integer f, TokenParsing f) => f Beamed
 parseBeamed =
-   fold . fold <$> many (duration <|> note <|> triplet)
+  fold . fold <$> sepEndBy1 (note <|> triplet) (some (char ' '))
 
 duration :: (MonadState Integer f, TokenParsing f) => f [t]
 duration =
@@ -34,8 +59,9 @@ duration =
 
 -- | Rf~
 note :: (MonadState Integer m, TokenParsing m) => m [Beamed]
-note = fmap pure $ token $
-           do h <- noteHand
+note = fmap pure $
+           do _ <- optional duration
+              h <- noteHand
               mods <- (appEndo . foldMap Endo) <$> many noteMod
               thisDuration <- get
               pure . mods . P.beam $ P.aNote h (1%thisDuration)
@@ -84,4 +110,16 @@ runBeamedParser input =
   let v = parseString defaultParseBeams mempty input
    in case v of
         Success e -> Right e
-        Failure d -> Left (show d)
+        Failure d -> Left (renderX d)
+
+runPartParser :: String -> Either String Part
+runPartParser input =
+  let v = parseString defaultParsePart mempty input
+   in case v of
+        Success e -> Right e
+        Failure d -> Left (renderX d)
+
+renderX :: Pretty.Doc -> String
+renderX xs =
+  flip Pretty.displayS "" $
+  Pretty.renderCompact $ xs <> Pretty.linebreak

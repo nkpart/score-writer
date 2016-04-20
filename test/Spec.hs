@@ -14,15 +14,19 @@ import           System.FilePath
 main :: IO ()
 main =
   defaultMain (testGroup "Tests" [
-                    parserTests
-                  , renderingTests])
+                  --  renderingTests
+                   parserTests
+                  ])
 
 parserTests :: TestTree
 parserTests =
-  testGroup "Parsing Tests"
-            (fmap (uncurry parse) examples)
-            where parse input expected =
-                    testCase input (assertEqual "" (P.runBeamedParser input) (Right expected))
+  testGroup "Parsing"
+       [testGroup "Beams" (fmap testBeam examples)
+       ,testGroup "Parts" [testNoUpbeat, testMoreNoUpbeat, testUpbeat, testFirstTime, testSecondTime, testRepeat]]
+            where testBeam (input, expected) =
+                    testCase (show input) (assertEqual "" (Right expected) (P.runBeamedParser input))
+                  testPart (input, expected) =
+                    testCase (show input) (assertEqual "" (Right expected) (P.runPartParser input))
 
                   examples :: [(String, [Beamed])]
                   examples =
@@ -33,10 +37,22 @@ parserTests =
                     ,("16R., R.", [dot r16, dot r16])
                     ]
 
+                  testNoUpbeat =
+                    testPart ("16L", buildPart (bars [l16]))
+                  testMoreNoUpbeat =
+                    testPart ("16L\nL\nL", buildPart (bars [l16, l16, l16]))
+                  testUpbeat =
+                    testPart ("16L /\nR", buildPart (upbeat l16 >> bars [r16]))
+                  testFirstTime =
+                    testPart ("R\n1|\nL\n", buildPart (bars [r4] >> firstTime [l4]))
+                  testSecondTime =
+                    testPart ("R\n2|\nL", buildPart (bars [r4] >> secondTime [l4]))
+                  testRepeat =
+                    testPart ("R\n:|", buildPart (bars [r4] >> thenRepeat))
 
 renderingTests :: TestTree
 renderingTests =
-  testGroup "Rendering Tests"
+  testGroup "Rendering"
             [testGroup "Full Rendering"
                        [testScores "Pipe Major Donald Maclean of Lewis"
                                   "pipe-major-donald-maclean-of-lewis.png"
