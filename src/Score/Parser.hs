@@ -26,11 +26,34 @@ defaultParsePart :: Parser Part
 defaultParsePart = evalStateT parsePart initDuration
  where initDuration = 4
 
-parsePart :: StateT Integer Parser Part
+defaultParseScore :: Parser Score
+defaultParseScore = evalStateT (parseScore defaultSignature) initDuration
+ where initDuration = 4
+       defaultSignature = Signature 4 4
+
+parseScore :: (MonadState Integer f, TokenParsing f, MonadPlus f) => Signature -> f Score
+parseScore defaultSignature =
+ do (signature, details) <- parseHeader defaultSignature
+    _ <- token (some (char '='))
+    theParts <- parsePart `sepBy1` (token (some (char '-')))
+    pure $! Score details signature theParts
+
+parseHeader :: (MonadState Integer f,TokenParsing f,MonadPlus f)
+            => Signature -> f (Signature,Details)
+parseHeader s =
+  execStateT p (s, blankDetails)
+  where p = many sigP
+        sigP =
+          do _ <- symbol "signature"
+             d <- natural
+             _ <- symbol "/"
+             r <- natural
+             _1 .= Signature d r
+
+parsePart :: (MonadState Integer f, TokenParsing f) => f Part
 parsePart =
   (P.buildPart . sequence_) <$>
-  (linesOf
-  (
+  (linesOf (
   -- Upbeat (overlaps regular beams)
   (try (parseBeamed <* char '/') <&> P.upbeat) <|>
   -- Regular beams (overlaps firsttime/secondtime markers)
@@ -106,15 +129,17 @@ on :: CharParsing f => Char -> b -> f b
 on ch f = char ch $> f
 
 runBeamedParser :: String -> Either String [Beamed]
-runBeamedParser input =
-  let v = parseString defaultParseBeams mempty input
-   in case v of
-        Success e -> Right e
-        Failure d -> Left (renderX d)
+runBeamedParser = runParser defaultParseBeams
 
 runPartParser :: String -> Either String Part
-runPartParser input =
-  let v = parseString defaultParsePart mempty input
+runPartParser = runParser defaultParsePart
+
+runScoreParser :: String -> Either String Score
+runScoreParser = runParser defaultParseScore
+
+runParser :: Parser b -> String -> Either String b
+runParser p input =
+  let v = parseString p mempty input
    in case v of
         Success e -> Right e
         Failure d -> Left (renderX d)

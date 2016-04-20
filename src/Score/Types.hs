@@ -99,6 +99,10 @@ data Details =
           ,_detailsBand :: Maybe String}
   deriving (Eq,Show)
 
+blankDetails :: Details
+blankDetails =
+  Details "" "" "" Nothing
+
 -- | Concrete lenses and prisms
 
 makePrisms ''Hand

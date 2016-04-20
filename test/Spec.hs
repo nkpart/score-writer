@@ -5,7 +5,6 @@ import           Test.Tasty.HUnit
 import           Test.Tasty.Golden
 
 import           BBCOCA hiding (main)
-import           Data.Sequence     as S
 import           Score
 import qualified Score.Parser as P
 import           Score.Prelude
@@ -21,15 +20,15 @@ main =
 parserTests :: TestTree
 parserTests =
   testGroup "Parsing"
-       [testGroup "Beams" (fmap testBeam examples)
-       ,testGroup "Parts" [testNoUpbeat, testMoreNoUpbeat, testUpbeat, testFirstTime, testSecondTime, testRepeat]]
-            where testBeam (input, expected) =
-                    testCase (show input) (assertEqual "" (Right expected) (P.runBeamedParser input))
-                  testPart (input, expected) =
-                    testCase (show input) (assertEqual "" (Right expected) (P.runPartParser input))
+       [testGroup "Beams" (fmap testBeam beamExamples)
+       ,testGroup "Parts" (fmap testPart partExamples)
+       ,testGroup "Scores" (fmap testScore scoreExamples)]
+            where testBeam = testParser P.runBeamedParser
+                  testPart = testParser P.runPartParser
+                  testScore = testParser P.runScoreParser
 
-                  examples :: [(String, [Beamed])]
-                  examples =
+                  beamExamples :: [(String, [Beamed])]
+                  beamExamples =
                     [("16R.", pure $ dot r16)
                     ,("16R. 8L-", pure $ dot r16 <> cut l8)
                     ,("16R L", pure $ r16 <> l16)
@@ -37,18 +36,28 @@ parserTests =
                     ,("16R., R.", [dot r16, dot r16])
                     ]
 
-                  testNoUpbeat =
-                    testPart ("16L", buildPart (bars [l16]))
-                  testMoreNoUpbeat =
-                    testPart ("16L\nL\nL", buildPart (bars [l16, l16, l16]))
-                  testUpbeat =
-                    testPart ("16L /\nR", buildPart (upbeat l16 >> bars [r16]))
-                  testFirstTime =
-                    testPart ("R\n1|\nL\n", buildPart (bars [r4] >> firstTime [l4]))
-                  testSecondTime =
-                    testPart ("R\n2|\nL", buildPart (bars [r4] >> secondTime [l4]))
-                  testRepeat =
-                    testPart ("R\n:|", buildPart (bars [r4] >> thenRepeat))
+                  partExamples =
+                    [("16L", buildPart (bars [l16]))
+                    ,("16L\nL\nL", buildPart (bars [l16, l16, l16]))
+                    ,("16L /\nR", buildPart (upbeat l16 >> bars [r16]))
+                    ,("R\n1|\nL\n", buildPart (bars [r4] >> firstTime [l4]))
+                    ,("R\n2|\nL", buildPart (bars [r4] >> secondTime [l4]))
+                    ,("R\n:|", buildPart (bars [r4] >> thenRepeat))
+                    ]
+
+                  scoreExamples :: [(String, Score)]
+                  scoreExamples =
+                    [
+                      ("===\nL"
+                     ,Score blankDetails (Signature 4 4) [buildPart (bars [l4])])
+                    , ("signature 2/4\n===\nL"
+                     ,Score blankDetails (Signature 2 4) [buildPart (bars [l4])])
+                    ]
+
+                  testParser p (input, expected) =
+                    testCase (show input) (assertEqual "" (Right expected) (p input))
+
+
 
 renderingTests :: TestTree
 renderingTests =
