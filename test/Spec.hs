@@ -13,8 +13,8 @@ import           System.FilePath
 main :: IO ()
 main =
   defaultMain (testGroup "Tests" [
-                  --  renderingTests
-                   parserTests
+                   renderingTests
+                  ,parserTests
                   ])
 
 parserTests :: TestTree
@@ -52,6 +52,10 @@ parserTests =
                      ,Score blankDetails (Signature 4 4) [buildPart (bars [l4])])
                     , ("signature 2/4\n===\nL"
                      ,Score blankDetails (Signature 2 4) [buildPart (bars [l4])])
+                    , ("signature 6/8\n===\nL\n---R"
+                     ,Score blankDetails (Signature 6 8) [buildPart (bars [l4]), buildPart (bars [r4])])
+                    , ("title \"Mrs Mac\"\nstyle \"Reel\"\ncomposer \"NP\"\nband \"OCA\"\n===\nL\n---R"
+                     ,Score (Details "Mrs Mac" "Reel" "NP" (Just "OCA")) (Signature 4 4) [buildPart (bars [l4]), buildPart (bars [r4])])
                     ]
 
                   testParser p (input, expected) =

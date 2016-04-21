@@ -42,7 +42,11 @@ parseHeader :: (MonadState Integer f,TokenParsing f,MonadPlus f)
             => Signature -> f (Signature,Details)
 parseHeader s =
   execStateT p (s, blankDetails)
-  where p = many sigP
+  where p = many (sigP <|> styleP <|> titleP <|> composerP <|> bandP)
+        titleP = symbol "title" *> stringLiteral >>= assign (_2 . detailsTitle)
+        styleP = symbol "style" *> stringLiteral >>= assign (_2 . detailsGenre)
+        composerP = symbol "composer" *> stringLiteral >>= assign (_2. detailsComposer)
+        bandP = symbol "band" *> stringLiteral >>= (assign (_2 . detailsBand) . Just)
         sigP =
           do _ <- symbol "signature"
              d <- natural
@@ -64,8 +68,8 @@ parsePart =
   (string "2|" *> T.newline *> linesOf' parseBeams <&> P.secondTime . concat) <|>
   -- Repeat
   (symbol ":|" $> P.thenRepeat)
-  )) <* eof
-  where linesOf p = p `sepBy1` T.newline
+  ))
+  where linesOf p = p `sepEndBy1` T.newline
         linesOf' p = p `sepEndBy1` T.newline
 
 parseBeams :: (MonadState Integer f, TokenParsing f) => f [Beamed]
@@ -129,13 +133,13 @@ on :: CharParsing f => Char -> b -> f b
 on ch f = char ch $> f
 
 runBeamedParser :: String -> Either String [Beamed]
-runBeamedParser = runParser defaultParseBeams
+runBeamedParser = runParser (defaultParseBeams <* eof)
 
 runPartParser :: String -> Either String Part
-runPartParser = runParser defaultParsePart
+runPartParser = runParser (defaultParsePart <* eof)
 
 runScoreParser :: String -> Either String Score
-runScoreParser = runParser defaultParseScore
+runScoreParser = runParser (defaultParseScore <* eof)
 
 runParser :: Parser b -> String -> Either String b
 runParser p input =
