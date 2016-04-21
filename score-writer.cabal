@@ -55,6 +55,7 @@ executable score-writer
                      , score-writer
                      , template-haskell
                      , transformers
+                     , trifecta
   default-language:    Haskell2010
 
 test-suite score-writer-test

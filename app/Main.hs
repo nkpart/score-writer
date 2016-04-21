@@ -8,13 +8,17 @@ import           Language.Haskell.Interpreter
 import           Options.Applicative
 import           Score
 import           Score.Types
+import           Score.Parser
 import           System.Directory
 import           System.FilePath
 import           System.FSNotify
 import           System.Process
+import           System.Exit
+import           Text.Trifecta (parseFromFile)
 
 data CLI
   = Watch Orientation FilePath String
+  | Render Orientation FilePath String
 
 cli :: Parser CLI
 cli =
@@ -24,6 +28,13 @@ cli =
                     strArgument (metavar "FILE") <*>
                     strArgument (metavar "VALUE"))
                    (progDesc "Watch a score for changes, preview when it does"))
+    ,command "render"
+             (info (Render <$>
+                    orientation <*>
+                    strArgument (metavar "SCORE_FILE") <*>
+                    strArgument (metavar "OUTPUT"))
+              (progDesc "Render a .score file to PDF")
+             )
              ]
   where orientation =
           flag' Portrait (long "portrait") <|>
@@ -36,6 +47,15 @@ main =
 execCli :: CLI -> IO ()
 execCli (Watch o file valueName) =
   watch o file valueName
+execCli (Render o inp outp) =
+  render o inp outp
+
+render :: Orientation -> FilePath -> FilePath -> IO ()
+render orientation inp outp =
+  do x <- parseFromFile defaultParseScore inp
+     case x of
+       Nothing -> exitFailure
+       Just score -> writeScorePage orientation PDF outp [score]
 
 watch :: Orientation -> FilePath -> String -> IO ()
 watch o file valueName = do

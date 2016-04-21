@@ -40,8 +40,9 @@ parserTests =
                     [("16L", buildPart (bars [l16]))
                     ,("16L\nL\nL", buildPart (bars [l16, l16, l16]))
                     ,("16L /\nR", buildPart (upbeat l16 >> bars [r16]))
-                    ,("R\n1|\nL\n", buildPart (bars [r4] >> firstTime [l4]))
-                    ,("R\n2|\nL", buildPart (bars [r4] >> secondTime [l4]))
+                    ,("R\n:1\nL\n", buildPart (bars [r4] >> firstTime [l4]))
+                    ,("R\n:2\nL", buildPart (bars [r4] >> secondTime [l4]))
+                    ,("R\n:1\nL\n:2\nR", buildPart (bars [r4] >> firstTime [l4] >> secondTime [r4]))
                     ,("R\n:|", buildPart (bars [r4] >> thenRepeat))
                     ]
 

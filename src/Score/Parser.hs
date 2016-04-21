@@ -56,20 +56,22 @@ parseHeader s =
 
 parsePart :: (MonadState Integer f, TokenParsing f) => f Part
 parsePart =
-  (P.buildPart . sequence_) <$>
-  (linesOf (
-  -- Upbeat (overlaps regular beams)
-  (try (parseBeamed <* char '/') <&> P.upbeat) <|>
-  -- Regular beams (overlaps firsttime/secondtime markers)
-  (try parseBeams <&> P.bars) <|>
-  -- First time
-  (string "1|" *> T.newline *> linesOf' parseBeams <&> P.firstTime . concat) <|>
-  -- Second time
-  (string "2|" *> T.newline *> linesOf' parseBeams <&> P.secondTime . concat) <|>
-  -- Repeat
-  (symbol ":|" $> P.thenRepeat)
-  ))
-  where linesOf p = p `sepEndBy1` T.newline
+  P.buildPart <$>
+    do -- Upbeat (overlaps regular beams)
+       a <- optional (try (parseBeamed <* char '/' <* T.newline) <&> P.upbeat)
+       -- Regular beams (overlaps firsttime/secondtime markers)
+       b <- sequence_ <$> sepEndBy1 (try parseBeams <&> P.bars) T.newline
+       -- First time
+       c <- optional $
+              do _ <- string ":1" <* T.newline
+                 linesOf' parseBeams <&> P.firstTime . concat
+       d <- optional $
+              do _ <- string ":2" <* T.newline
+                 linesOf' parseBeams <&> P.secondTime . concat
+       e <- optional (symbol ":|" $> P.thenRepeat)
+       let f = maybe (pure ()) id
+       pure $ f a >> b >> f c >> f d >> f e >> pure ()
+  where -- linesOf p = p `sepEndBy1` T.newline
         linesOf' p = p `sepEndBy1` T.newline
 
 parseBeams :: (MonadState Integer f, TokenParsing f) => f [Beamed]
