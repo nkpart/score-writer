@@ -34,6 +34,7 @@ parserTests =
                     ,("16R L", pure $ r16 <> l16)
                     ,("R L", pure $ r4 <> l4)
                     ,("16R., R.", [dot r16, dot r16])
+                    ,("u( L )u", [startUnison <> l4 <> stopUnison])
                     ]
 
                   partExamples =

@@ -4,13 +4,12 @@ style "March"
 signature 2/4
 ===
 L /
-R L
-1|
-R R
-
-2|
-L L
+u( R, L )u
+:1
+R, R
+:2
+L, L
 ---
 R /
-L R L R
+L, R, L, R
 :|

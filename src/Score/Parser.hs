@@ -80,7 +80,7 @@ parseBeams =
 
 parseBeamed :: (MonadState Integer f, TokenParsing f) => f Beamed
 parseBeamed =
-  fold . fold <$> sepEndBy1 (note <|> triplet) (some (char ' '))
+  fold . fold <$> sepEndBy1 (note <|> triplet <|> startUnison <|> endUnison) (some (char ' '))
 
 duration :: (MonadState Integer f, TokenParsing f) => f [t]
 duration =
@@ -118,14 +118,14 @@ noteMod =
 -- | Beam tokens
 --------------------
 
-startUnison :: TokenParsing f => f [Beamed]
+startUnison :: CharParsing f => f [Beamed]
 startUnison =
-  symbol "u(" $>
+  string "u(" $>
   [P.startUnison]
 
-endUnison :: TokenParsing f => f [Beamed]
+endUnison :: CharParsing f => f [Beamed]
 endUnison =
-  symbol ")u" $>
+  string ")u" $>
   [P.stopUnison]
 
 -- | Support
