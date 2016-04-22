@@ -80,7 +80,10 @@ parseBeams =
 
 parseBeamed :: (MonadState Integer f, TokenParsing f) => f Beamed
 parseBeamed =
-  fold . fold <$> sepEndBy1 (note <|> triplet <|> startUnison <|> endUnison) (some (char ' '))
+  fold . fold <$> sepEndBy1 (note <|> triplet <|> startUnison <|> endUnison) someSpaces
+
+someSpaces :: CharParsing f => f String
+someSpaces = some (char ' ')
 
 duration :: (MonadState Integer f, TokenParsing f) => f [t]
 duration =
@@ -97,7 +100,7 @@ note = fmap pure $
 
 -- | { beam }
 triplet :: (MonadState Integer f, TokenParsing f) => f [Beamed]
-triplet = pure . P.triplet <$> braces parseBeamed
+triplet = pure . P.triplet <$> (char '{' *> parseBeamed <* char '}' )
 
 noteHand :: CharParsing f => f Hand
 noteHand =

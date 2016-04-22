@@ -35,6 +35,7 @@ parserTests =
                     ,("R L", pure $ r4 <> l4)
                     ,("16R., R.", [dot r16, dot r16])
                     ,("u( L )u", [startUnison <> l4 <> stopUnison])
+                    ,("{8L R L} R", [ triplet (l8 <-> r8 <-> l8) <-> r8])
                     ]
 
                   partExamples =
@@ -97,6 +98,12 @@ testScores name expected scores =
   where outputFile = "tmp" </> takeFileName fullExpected
         shortOutput = dropExtension outputFile
         fullExpected = "test/expected" </> expected
+
+-- testScoreFile name expected file =
+--   goldenVsFile name fullExpected outputFile (writeScorePage Portrait PNG shortOutput scores)
+--   where outputFile = "tmp" </> takeFileName fullExpected
+--         shortOutput = dropExtension outputFile
+--         fullExpected = "test/expected" </> expected
 
 singleParted name sig part =
   Score (Details name "" "" Nothing) sig [buildPart part]
