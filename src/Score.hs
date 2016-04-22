@@ -4,9 +4,19 @@ import           Control.Monad.Cont
 import           Data.Monoid        ((<>))
 import           Score.Render
 import           Score.Types
+import           Score.Parser
+import           Text.Trifecta (parseFromFile)
+import           System.Exit
 import           System.IO
 import           System.IO.Temp
 import           System.Process
+
+render :: Format -> Orientation -> FilePath -> FilePath -> IO ()
+render p orientation inp outp =
+  do x <- parseFromFile defaultParseScore inp
+     case x of
+       Nothing -> exitFailure
+       Just score -> writeScorePage orientation p outp [score]
 
 assembleSet :: FilePath -> [(Orientation, [Score])] -> IO ()
 assembleSet destFile things =
@@ -17,8 +27,6 @@ assembleSet destFile things =
            return $ fp <> ".pdf"
       liftIO $ collatePDFs scores destFile
        where withSystemTempFile' = ContT $ \f -> withSystemTempFile "score-writer" (\fp h -> hClose h >> f fp)
-
-           
 
 writeScorePage :: Orientation -> Format -> FilePath -> [Score] -> IO ()
 writeScorePage o format name music =

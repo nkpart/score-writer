@@ -72,7 +72,12 @@ renderingTests =
             [testGroup "Full Rendering"
                        [testScores "Pipe Major Donald Maclean of Lewis"
                                   "pipe-major-donald-maclean-of-lewis.png"
-                                  [pmDonaldMacleanOfLewis]]
+                                  [pmDonaldMacleanOfLewis],
+                        testScoreFile ".score Pipe Major Donald Maclean of Lewis"
+                                      "pipe-major-donald-maclean-of-lewis.png"
+                                      "library/pm-donald-maclean-of-lewis.score"
+                       ]
+
             ,testGroup "Signature setMomentAndStructure"
                        [
                          testScores "moment and structure"
@@ -99,11 +104,13 @@ testScores name expected scores =
         shortOutput = dropExtension outputFile
         fullExpected = "test/expected" </> expected
 
--- testScoreFile name expected file =
---   goldenVsFile name fullExpected outputFile (writeScorePage Portrait PNG shortOutput scores)
---   where outputFile = "tmp" </> takeFileName fullExpected
---         shortOutput = dropExtension outputFile
---         fullExpected = "test/expected" </> expected
+testScoreFile name expected file =
+  goldenVsFile name
+               fullExpected
+               outputFile
+               (render PNG Portrait file outputFile)
+  where outputFile = "tmp" </> takeFileName fullExpected
+        fullExpected = "test/expected" </> expected
 
 singleParted name sig part =
   Score (Details name "" "" Nothing) sig [buildPart part]
