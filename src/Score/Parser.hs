@@ -54,7 +54,7 @@ parseHeader s =
              r <- natural
              _1 .= Signature d r
 
-parsePart :: (MonadState Integer f, TokenParsing f) => f Part
+parsePart :: (MonadState Integer f, CharParsing f) => f Part
 parsePart =
   P.buildPart <$>
     do -- Upbeat (overlaps regular beams)
@@ -68,39 +68,38 @@ parsePart =
        d <- optional $
               do _ <- string ":2" <* T.newline
                  linesOf' parseBeams <&> P.secondTime . concat
-       e <- optional (symbol ":|" $> P.thenRepeat)
+       e <- optional (string ":|" $> P.thenRepeat)
        let f = maybe (pure ()) id
        pure $ f a >> b >> f c >> f d >> f e >> pure ()
   where -- linesOf p = p `sepEndBy1` T.newline
         linesOf' p = p `sepEndBy1` T.newline
 
-parseBeams :: (MonadState Integer f, TokenParsing f) => f [Beamed]
+parseBeams :: (MonadState Integer f, CharParsing f) => f [Beamed]
 parseBeams =
   sepBy1 parseBeamed (string ", ")
 
-parseBeamed :: (MonadState Integer f, TokenParsing f) => f Beamed
+parseBeamed :: (MonadState Integer f, CharParsing f) => f Beamed
 parseBeamed =
-  fold . fold <$> sepEndBy1 (note <|> triplet <|> startUnison <|> endUnison) someSpaces
+  fold <$> sepEndBy1 (note <|> triplet <|> startUnison <|> endUnison) someSpaces
 
 someSpaces :: CharParsing f => f String
 someSpaces = some (char ' ')
 
-duration :: (MonadState Integer f, TokenParsing f) => f [t]
+duration :: (MonadState Integer f, CharParsing f) => f Beamed
 duration =
-  (put =<< natural) $> []
+  (put =<< (read <$> some digit)) $> mempty
 
 -- | Rf~
-note :: (MonadState Integer m, TokenParsing m) => m [Beamed]
-note = fmap pure $
-           do _ <- optional duration
-              h <- noteHand
-              mods <- (appEndo . foldMap Endo) <$> many noteMod
-              thisDuration <- get
-              pure . mods . P.beam $ P.aNote h (1%thisDuration)
+note :: (MonadState Integer m, CharParsing m) => m Beamed
+note = do _ <- optional duration
+          h <- noteHand
+          mods <- (appEndo . foldMap Endo) <$> many noteMod
+          thisDuration <- get
+          pure . mods . P.beam $ P.aNote h (1%thisDuration)
 
 -- | { beam }
-triplet :: (MonadState Integer f, TokenParsing f) => f [Beamed]
-triplet = pure . P.triplet <$> (char '{' *> parseBeamed <* char '}' )
+triplet :: (MonadState Integer f, CharParsing f) => f Beamed
+triplet = P.triplet <$> (char '{' *> parseBeamed <* char '}' )
 
 noteHand :: CharParsing f => f Hand
 noteHand =
@@ -121,15 +120,13 @@ noteMod =
 -- | Beam tokens
 --------------------
 
-startUnison :: CharParsing f => f [Beamed]
+startUnison :: CharParsing f => f Beamed
 startUnison =
-  string "u(" $>
-  [P.startUnison]
+  string "u(" $> P.startUnison
 
-endUnison :: CharParsing f => f [Beamed]
+endUnison :: CharParsing f => f Beamed
 endUnison =
-  string ")u" $>
-  [P.stopUnison]
+  string ")u" $> P.stopUnison
 
 -- | Support
 ----------------
