@@ -53,7 +53,9 @@ data NoteHead =
            ,_noteHeadSlurEnd :: Bool
            ,_noteHeadEmbellishment :: Maybe Embellishment
            -- these should be applied to the note after this one
-           ,_noteHeadMods :: [NoteMod]}
+           ,_noteHeadMods :: [NoteMod]
+           ,_noteHeadDynamics :: Maybe Dynamics -- TODO use own type
+           }
   deriving (Eq, Show, Data, Typeable)
 
 data Note = Note NoteHead
@@ -64,10 +66,29 @@ data Note = Note NoteHead
 
 data NoteMod = EndRoll deriving (Eq, Show, Data, Typeable)
 
--- TODO should be non empty
+data Dynamics
+  = PPPPP
+  | PPPP
+  | PPP
+  | PP
+  | P
+  | MP
+  | MF
+  | F
+  | FF
+  | FFF
+  | FFFF
+  | SF
+  | SFF
+  | SP
+  | SPP
+  | SFZ
+  | RFZ
+  deriving (Eq,Show,Data,Typeable,Enum)
+
 newtype Beamed =
-  Beamed {_beamedNotes :: [Note] }
-  deriving (Eq,Show, Data, Typeable)
+  Beamed { _beamedNotes :: [Note] }
+  deriving (Eq, Show, Data, Typeable)
 
 beam :: Note -> Beamed
 beam = Beamed . pure
@@ -109,7 +130,6 @@ makePrisms ''Hand
 makeLenses ''NoteHead
 makePrisms ''Note
 makeLenses ''Beamed
--- makeLenses ''Phrase
 makeLenses ''Part
 makePrisms ''Repeat
 makeLenses ''Details

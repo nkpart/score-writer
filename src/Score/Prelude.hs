@@ -82,7 +82,7 @@ thisUnison :: Beamed -> Beamed
 thisUnison x = startUnison <-> x <-> stopUnison
 
 aNote :: Hand -> Ratio Integer -> Note
-aNote h d = Note $ NoteHead h False False d False False Nothing mempty
+aNote h d = Note $ NoteHead h False False d False False Nothing [] Nothing
 
 -- | Note modifiers
 
@@ -94,6 +94,9 @@ startRoll = buzz . (_NoteHead . noteHeadSlurBegin .~ True)
 
 endRoll :: AsNoteHead (->) Identity t => t -> t
 endRoll = _NoteHead . noteHeadSlurEnd .~ True
+
+dynamics :: AsNoteHead (->) Identity t => Dynamics -> t -> t
+dynamics p = _NoteHead . noteHeadDynamics .~ Just p
 
 roll :: AsNoteHead (->) Identity c => c -> c
 roll = (_NoteHead . noteHeadMods %~ (EndRoll:)) . startRoll

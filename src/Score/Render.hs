@@ -7,7 +7,8 @@ import           Control.Lens
 import qualified Data.Foldable       as F
 import Control.Monad.State.Strict
 import           Data.Semigroup ((<>))
-import qualified Data.Music.Lilypond as L
+import qualified Data.Music.Lilypond as L hiding (F)
+import qualified Data.Music.Lilypond.Dynamics as L
 import           Data.Ratio
 import           Data.VectorSpace
 import           Score.Types
@@ -298,10 +299,33 @@ renderNoteHead n =
       startTie = if n^.noteHeadSlurBegin
                   then L.beginSlur
                   else id
+      addDynamics = case n^.noteHeadDynamics of
+                      Just p -> L.addDynamics (mapDynamics p)
+                      Nothing -> id
       finalNote =
-        startTie . endTie $ thisHead
+        startTie . endTie . addDynamics $ thisHead
 
   in Graced embell mempty (pure finalNote)
+
+mapDynamics :: Dynamics -> L.Dynamics
+mapDynamics p = case p of
+                  PPPPP -> L.PPPPP
+                  PPPP -> L.PPPP
+                  PPP -> L.PPP
+                  PP -> L.PP
+                  P -> L.P
+                  MP -> L.MP
+                  MF -> L.MF
+                  F -> L.F
+                  FF -> L.FF
+                  FFF -> L.FFF
+                  FFFF -> L.FFFF
+                  SF -> L.SF
+                  SFF -> L.SFF
+                  SFZ -> L.SFZ
+                  RFZ -> L.RFZ
+                  SP -> L.SP
+                  SPP -> L.SPP
 
 leftPitch :: L.Pitch
 leftPitch = L.Pitch (L.B, 0, 4)
