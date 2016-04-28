@@ -81,7 +81,7 @@ data Part =
 data Repeat
   = NoRepeat
   | Repeat
-  | Return ([Beamed],[Beamed])
+  | Return [Beamed] [Beamed]
   deriving (Eq,Show)
 
 data Signature = Signature Integer Integer deriving (Eq, Show)

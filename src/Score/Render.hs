@@ -102,7 +102,7 @@ renderPart p =
      case p ^. partRepeat of
        NoRepeat -> pure thisPart
        Repeat -> pure $ L.Repeat False 2 thisPart Nothing
-       Return (firstTime, secondTime) ->
+       Return firstTime secondTime ->
          do ft <- restoring (r firstTime)
             st <- r secondTime
             pure $! L.Repeat False 2 thisPart (Just (ft, st))

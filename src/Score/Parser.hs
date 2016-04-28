@@ -1,4 +1,7 @@
 {-# language FlexibleContexts #-}
+{-# language NoMonomorphismRestriction #-}
+{-# language MultiParamTypeClasses #-}
+{-# options_ghc -fno-warn-orphans #-}
 module Score.Parser where
 
 import Control.Applicative
@@ -54,52 +57,49 @@ parseHeader s =
              r <- natural
              _1 .= Signature d r
 
-parsePart :: (MonadState Integer f, CharParsing f) => f Part
+parsePart :: (MonadState Integer f, TokenParsing f) => f Part
 parsePart =
-  P.buildPart <$>
     do -- Upbeat (overlaps regular beams)
-       a <- optional (try (parseBeamed <* char '/' <* T.newline) <&> P.upbeat)
+       ana <- optional (try (tokenLine (parseBeamed <* symbol "/")))
        -- Regular beams (overlaps firsttime/secondtime markers)
-       b <- sequence_ <$> sepEndBy1 (try parseBeams <&> P.bars) T.newline
+       beams <- foldSome parseBeams
        -- First time
-       c <- optional $
-              do _ <- string ":1" <* T.newline
-                 linesOf' parseBeams <&> P.firstTime . concat
-       d <- optional $
-              do _ <- string ":2" <* T.newline
-                 linesOf' parseBeams <&> P.secondTime . concat
-       e <- optional (string ":|" $> P.thenRepeat)
-       let f = maybe (pure ()) id
-       pure $ f a >> b >> f c >> f d >> f e >> pure ()
-  where -- linesOf p = p `sepEndBy1` T.newline
-        linesOf' p = p `sepEndBy1` T.newline
+       rep <- let ft = symbol ":1" *> foldSome parseBeams
+                  st = symbol ":2" *> foldSome parseBeams
+               in try (Return <$> ft <*> st) <|>
+                  try (Return <$> ft <*> pure []) <|>
+                  try (Return <$> pure [] <*> st) <|>
+                  try (symbol ":|" $> Repeat) <|>
+                  pure NoRepeat
+       pure $! Part ana beams rep
 
-parseBeams :: (MonadState Integer f, CharParsing f) => f [Beamed]
+parseBeams :: (MonadState Integer f, TokenParsing f) => f [Beamed]
 parseBeams =
-  sepBy1 parseBeamed (string ", ")
+  -- we want to treat newlines as the end of a set of beams
+  -- so we run unUnlined
+  -- but after that we want to consume the newline, so we token up
+  tokenLine $ sepBy1 parseBeamed (symbol ",")
 
-parseBeamed :: (MonadState Integer f, CharParsing f) => f Beamed
+parseBeamed :: (MonadState Integer f, TokenParsing f) => f Beamed
 parseBeamed =
-  fold <$> sepEndBy1 (note <|> triplet <|> startUnison <|> endUnison) someSpaces
+  foldSome (note <|> triplet <|> startUnison <|> endUnison)
 
-someSpaces :: CharParsing f => f String
-someSpaces = some (char ' ')
-
-duration :: (MonadState Integer f, CharParsing f) => f Beamed
+duration :: (MonadState Integer f, TokenParsing f) => f ()
 duration =
-  (put =<< (read <$> some digit)) $> mempty
+  put =<< natural
 
 -- | Rf~
-note :: (MonadState Integer m, CharParsing m) => m Beamed
-note = do _ <- optional duration
+note :: (MonadState Integer m, TokenParsing m) => m Beamed
+note = token $
+       do skipOptional duration
           h <- noteHand
           mods <- (appEndo . foldMap Endo) <$> many noteMod
           thisDuration <- get
           pure . mods . P.beam $ P.aNote h (1%thisDuration)
 
 -- | { beam }
-triplet :: (MonadState Integer f, CharParsing f) => f Beamed
-triplet = P.triplet <$> (char '{' *> parseBeamed <* char '}' )
+triplet :: (MonadState Integer f, TokenParsing f) => f Beamed
+triplet = P.triplet <$> (symbol "{" *> parseBeamed <* symbol "}" )
 
 noteHand :: CharParsing f => f Hand
 noteHand =
@@ -117,19 +117,22 @@ noteMod =
   on 'd' P.drag <|>
   on 'r' P.ruff
 
--- | Beam tokens
---------------------
-
-startUnison :: CharParsing f => f Beamed
+startUnison :: TokenParsing f => f Beamed
 startUnison =
-  string "u(" $> P.startUnison
+  symbol "u(" $> P.startUnison
 
-endUnison :: CharParsing f => f Beamed
+endUnison :: TokenParsing f => f Beamed
 endUnison =
-  string ")u" $> P.stopUnison
+  symbol ")u" $> P.stopUnison
 
 -- | Support
 ----------------
+
+foldSome :: (Monoid b, Alternative f) => f b -> f b
+foldSome p = fold <$> some p
+
+tokenLine :: TokenParsing m => Unlined m a -> m a
+tokenLine = token . T.runUnlined
 
 on :: CharParsing f => Char -> b -> f b
 on ch f = char ch $> f
@@ -154,3 +157,6 @@ renderX :: Pretty.Doc -> String
 renderX xs =
   flip Pretty.displayS "" $
   Pretty.renderCompact $ xs <> Pretty.linebreak
+
+instance MonadState Integer f => MonadState Integer (Unlined f) where
+  state = fmap Unlined state

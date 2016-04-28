@@ -151,15 +151,15 @@ bars bs = writeF (partBeams %~ (\x -> bs <> x))
 
 firstTime :: [Beamed] -> PartM ()
 firstTime x = writeF (partRepeat %~ f)
-  where f NoRepeat = Return (x, mempty)
-        f Repeat = Return (x, mempty)
-        f (Return (p,q)) = Return (p <> x, q)
+  where f NoRepeat = Return x mempty
+        f Repeat = Return x mempty
+        f (Return p q) = Return (p <> x) q
 
 secondTime :: [Beamed] -> PartM ()
 secondTime x = writeF (partRepeat %~ f)
-  where f NoRepeat = Return (mempty, x)
-        f Repeat = Return (mempty, x)
-        f (Return (p,q)) = Return (p, q <> x)
+  where f NoRepeat = Return mempty x
+        f Repeat = Return mempty x
+        f (Return p q) = Return p (q <> x)
 
 thenRepeat :: PartM ()
 thenRepeat = writeF (partRepeat .~ Repeat)
