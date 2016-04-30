@@ -300,7 +300,7 @@ renderNoteHead n =
                   then L.beginSlur
                   else id
       addDynamics = case n^.noteHeadDynamics of
-                      Just p -> L.addDynamics (mapDynamics p)
+                      Just p -> L.addDynamics' L.Above (mapDynamics p)
                       Nothing -> id
       finalNote =
         startTie . endTie . addDynamics $ thisHead

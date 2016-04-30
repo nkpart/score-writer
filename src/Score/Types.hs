@@ -1,4 +1,5 @@
 {-# LANGUAGE DeriveDataTypeable        #-}
+{-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
@@ -107,6 +108,9 @@ data Repeat
 
 data Signature = Signature Integer Integer deriving (Eq, Show)
 
+signatureDuration :: Signature -> Ratio Integer
+signatureDuration (Signature n d) = n % d
+
 data Score =
   Score {_scoreDetails :: Details
         ,_scoreSignature :: Signature
@@ -185,12 +189,18 @@ instance (p ~ (->),Functor f) => AsDuration p f NoteHead where
 instance (p ~ (->),Applicative f) => AsDuration p f Note where
   _Duration f (Note n) = Note <$> _Duration f n
   _Duration f (Rest n) = Rest <$> f n
-  _Duration f (Tuplet r n) = Tuplet r <$> (traverse . _Duration) f n
+  _Duration f (Tuplet r n) = Tuplet r <$> (traverse . _Duration . tupletise r) f n
   _Duration _ (U u) = pure (U u)
-  -- _Duration _ StopUnison = pure StopUnison
+
+-- HOLY TEST ME BATMAN
+tupletise :: Ratio Integer -> Simple Iso (Ratio Integer) (Ratio Integer)
+tupletise x =
+  let r = numerator x
+      n = denominator x
+   in iso ((n%r) *) ((r%n) *)
 
 instance (p ~ (->),Applicative f) => AsDuration p f Beamed where
-  _Duration f (Beamed n) = Beamed <$> (traverse . _Duration) f n -- <*> pure m
+  _Duration f (Beamed n) = Beamed <$> (traverse . _Duration) f n
 
 instance AsNoteHead p f NoteHead where
   _NoteHead = id
@@ -200,7 +210,6 @@ instance Applicative f => AsNoteHead (->) f Note where
   _NoteHead _ (Rest n) = pure (Rest n)
   _NoteHead f (Tuplet d ns) = Tuplet d <$> (traverse . _NoteHead) f ns
   _NoteHead _ (U u) = pure (U u)
-  -- _NoteHead _ StopUnison = pure StopUnison
 
 instance (Applicative f) => AsNoteHead (->) f Beamed where
   _NoteHead = beamedNotes . traverse . _NoteHead

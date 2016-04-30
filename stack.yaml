@@ -10,6 +10,9 @@ packages:
 #    git: git@github.com:nkpart/lilypond.git 
 #    commit: 7a2d158
 #  extra-dep: true
+- location:
+    '../x/parsers'
+  extra-dep: true
 - '../lilypond'
 - location: 
     git: https://github.com/music-suite/music-dynamics.git
