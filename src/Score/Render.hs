@@ -1,4 +1,5 @@
 {-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TemplateHaskell #-}
 module Score.Render (
   printScorePage, Orientation(..)
   ) where
@@ -14,6 +15,11 @@ import           Data.VectorSpace
 import           Score.Types
 import           Text.Pretty
 
+-- I think this would nicer as a stream
+data I = GraceI L.Music | NoteI [L.Music] | OtherMusicI [L.Music] | TupletStartI Int Int | TupletEndI
+-- type S = [I]
+
+makePrisms ''I
 
 -- TODO:
 -- * prettier fonts - http://lilypond.1069038.n5.nabble.com/Change-font-of-titles-composer-etc-td25870.html
@@ -203,12 +209,19 @@ renderBeamed =
   . fmap renderNote
 
 type PrePost = ([L.Music], [ L.Music ])
-data RenderedNote = Graced (Maybe L.Music) PrePost [L.Music]
+data RenderedNote = Graced (Maybe L.Music) PrePost (Maybe L.Music)
                   | Tupleted Int Int [RenderedNote]
 
+-- Then we can have stages like:
+--   put grace notes before tuplet starts
+--   finding the first note becomes easier (it's just the first Note)
+--   finding the last note becomes easier (it's just the last Note)
+
 notesOnly :: Traversal' RenderedNote L.Music
+-- notesOnly = traverse . _NoteI . traverse
 notesOnly f (Graced mb x n) = Graced mb x <$> traverse f n
 notesOnly f (Tupleted n d xs) = Tupleted n d <$> (traverse . notesOnly) f xs
+
 
 firstMusic :: Traversal' RenderedNote L.Music
 firstMusic f (Graced mb x n) = Graced mb x <$> traverse f n
@@ -224,11 +237,13 @@ lastMusic f (Tupleted n d xs) =
 
 buildMusic :: [RenderedNote] -> [L.Music]
 buildMusic rns = rns >>= f
-  where f (Graced mb (pre', post) l) = pre' <> maybe l (\v -> v : l ) mb <> post
+  where f (Graced mb (pre', post) l) = pre' <> maybe (m2l l) (\v -> v : m2l l) mb <> post
         f (Tupleted n d more) =
           -- TODO: grace notes need to be rendered outside of the tuplet
           pure $
           L.Tuplet n d (L.Sequential . F.toList . buildMusic $ more)
+        m2l (Just v) = [v]
+        m2l Nothing = []
 
 addBeams :: [RenderedNote] -> [RenderedNote]
 addBeams rn =
@@ -256,8 +271,8 @@ renderUnison u =
       eu =
          [L.Raw "\\ottava #0"]
   in case u of
-           StartUnison -> Graced Nothing (su, mempty) mempty
-           StopUnison -> Graced Nothing (mempty, eu) mempty
+           StartUnison -> Graced Nothing (su, mempty) Nothing
+           StopUnison -> Graced Nothing (mempty, eu) Nothing
 
 tweaksForBigAccent :: [L.Music]
 tweaksForBigAccent =
