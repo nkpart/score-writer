@@ -19,12 +19,6 @@ import           Data.Foldable  (foldl')
 import           Data.Ratio
 import           Data.Semigroup
 
-type Toggle = Maybe Bool
-
-toggle :: a -> a -> a -> Toggle -> a
-toggle f g h = maybe f (\v -> bool v g h)
-  where bool x a b = if x then b else a
-
 -- | The core types
 
 data Hand
@@ -47,17 +41,22 @@ data Unison =
 
 data NoteHead =
   NoteHead {_noteHeadHand :: Hand
-           ,_noteHeadAccent :: Bool
+           ,_noteHeadAccent :: Maybe AccentSize
            ,_noteHeadBuzz :: Bool
            ,_noteHeadDuration :: Ratio Integer
            ,_noteHeadSlurBegin :: Bool
            ,_noteHeadSlurEnd :: Bool
+           ,_noteHeadCrescBegin :: Maybe Cresc
+           ,_noteHeadCrescEnd :: Bool
            ,_noteHeadEmbellishment :: Maybe Embellishment
            -- these should be applied to the note after this one
            ,_noteHeadMods :: [NoteMod]
            ,_noteHeadDynamics :: Maybe Dynamics -- TODO use own type
            }
   deriving (Eq, Show, Data, Typeable)
+
+data Cresc = Cresc | Decresc deriving (Eq, Show, Data, Typeable)
+data AccentSize = AccentRegular | AccentBig deriving (Eq, Show, Data, Typeable)
 
 data Note = Note NoteHead
           | Tuplet (Ratio Integer) [Note]

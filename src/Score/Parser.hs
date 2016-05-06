@@ -24,7 +24,6 @@ import           Text.Trifecta                as T
 
 data ParseState = ParseState {
   _parseStateNoteDuration :: Integer,
-  _parseStateBarTime :: Sum (Ratio Integer),
   _parseStateSignature :: Signature
   } deriving (Eq, Show)
 
@@ -53,7 +52,7 @@ defaultParseScore = evalStateT (parseScore defaultSignature) initDuration
        defaultSignature = Signature 4 4
 
 initParseState :: Integer -> ParseState
-initParseState initDuration = ParseState initDuration 0 (Signature 4 4)
+initParseState initDuration = ParseState initDuration (Signature 4 4)
 
 type MonadParseState = MonadState ParseState
 
@@ -169,6 +168,7 @@ noteMod =
   on '-' P.cut <|>
   on '~' P.roll <|>
   on '^' P.accent <|>
+  on 'V' P.bigAccent <|>
   on 'f' P.flam <|>
   on 'd' P.drag <|>
   on 'r' P.ruff <|>
@@ -187,7 +187,10 @@ noteMod =
   d "\\sp\\" SP <|>
   d "\\spp\\" SPP <|>
   d "\\sfz\\" SFZ <|>
-  d "\\rfz\\" RFZ
+  d "\\rfz\\" RFZ <|>
+  try (string "\\<\\") $> P.startCrescendo <|>
+  try (string "\\>\\") $> P.startDecrescendo <|>
+  try (string "\\.\\") $> P.endCresc
 
 startUnison :: TokenParsing f => f Beamed
 startUnison =

@@ -147,6 +147,7 @@ beginScore signature i =
          ,L.Override "TextSpanner.bound-details.right.attach-dir" (L.toValue (1::Int))
          ,L.Override "TextSpanner.thickness" (L.toValue (4::Int))
          ,L.Override "TextSpanner.color" $ L.toLiteralValue "#(x11-color 'orange)"
+         ,L.Override "DynamicLineSpanner.direction" $ L.toValue (1::Int)
          ,L.Override "Staff.OttavaBracket.thickness" $ L.toValue (2::Int)
          ,L.Override "Staff.OttavaBracket.color" $ L.toLiteralValue "#(x11-color 'OrangeRed)"
          ,L.Override "Staff.OttavaBracket.edge-height" $ L.toLiteralValue "#'(1.2 . 1.2)"
@@ -238,25 +239,37 @@ addBeams rn =
 
 renderNote :: Note -> RenderedNote
 renderNote (Note h) = renderNoteHead h
-renderNote (Rest n) = Graced Nothing mempty (pure $ L.Rest (Just $ L.Duration n) [])
+renderNote (Rest n) = renderRest n
 renderNote (Tuplet r h) = Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) (fmap renderNote h)
 renderNote (U u) = renderUnison u
+
+renderRest :: Duration -> RenderedNote
+renderRest n = Graced Nothing mempty (pure $ L.Rest (Just $ L.Duration n) [])
 
 renderUnison :: Unison -> RenderedNote
 renderUnison u =
   let su =
-         [
-             L.Raw "\\ottava #1"
-           , L.Set "Staff.middleCPosition" (L.toValue (0::Int))
-           , L.Set "Staff.ottavation" (L.toValue "")
+         [L.Raw "\\ottava #1"
+         ,L.Set "Staff.middleCPosition" (L.toValue (0::Int))
+         ,L.Set "Staff.ottavation" (L.toValue "")
          ]
       eu =
-         [
-           L.Raw "\\ottava #0"
-         ]
+         [L.Raw "\\ottava #0"]
   in case u of
            StartUnison -> Graced Nothing (su, mempty) mempty
            StopUnison -> Graced Nothing (mempty, eu) mempty
+
+tweaksForBigAccent :: [L.Music]
+tweaksForBigAccent =
+         [L.Raw "\\once \\override Script.rotation = #'(-90 0 0)"
+         ,L.Raw "\\once \\override Script.font-size = #3"
+         ,L.Raw "\\once \\override Script.staff-padding = #2.0"]
+
+revertsForBigAccent :: [L.Music]
+revertsForBigAccent =
+         [L.Revert "Script.rotation"
+         ,L.Revert "Script.font-size"
+         ,L.Revert "Script.staff-padding"]
 
 renderNoteHead :: NoteHead -> RenderedNote
 renderNoteHead n =
@@ -282,9 +295,10 @@ renderNoteHead n =
                             ]
       events =
         let accF =
-              if n^.noteHeadAccent
-                then (L.Articulation L.Above L.Accent:)
-                else id
+              case n^.noteHeadAccent of
+                Just AccentBig -> (L.Articulation L.Above L.Accent:)
+                Just AccentRegular -> (L.Articulation L.Above L.Accent:)
+                Nothing -> id
             buzzF =
               if n^.noteHeadBuzz
                  -- TODO: tremolo doesn't look quite right
@@ -292,6 +306,7 @@ renderNoteHead n =
                  then (L.TremoloS 32:)
                  else id
          in accF . buzzF $ []
+
       thisHead = L.Note (L.NotePitch pitch Nothing) (Just $ L.Duration (n ^. noteHeadDuration)) events
       endTie = if n^.noteHeadSlurEnd
                   then L.endSlur
@@ -302,10 +317,27 @@ renderNoteHead n =
       addDynamics = case n^.noteHeadDynamics of
                       Just p -> L.addDynamics' L.Above (mapDynamics p)
                       Nothing -> id
-      finalNote =
-        startTie . endTie . addDynamics $ thisHead
 
-  in Graced embell mempty (pure finalNote)
+      addCresc = case n^.noteHeadCrescBegin of
+                   Just Cresc -> L.beginCresc
+                   Just Decresc -> L.beginDim
+                   Nothing -> id
+      stopCresc = if n^.noteHeadCrescEnd
+                   then L.endCresc
+                   else id
+
+      preMusic = case n ^. noteHeadAccent of
+                   Nothing -> []
+                   Just AccentRegular -> []
+                   Just AccentBig -> tweaksForBigAccent
+      postMusic = case n ^. noteHeadAccent of
+                   Nothing -> []
+                   Just AccentRegular -> []
+                   Just AccentBig -> revertsForBigAccent
+      finalNote =
+        startTie . endTie . addDynamics . addCresc . stopCresc $ thisHead
+
+  in Graced embell (preMusic, postMusic) (pure finalNote)
 
 mapDynamics :: Dynamics -> L.Dynamics
 mapDynamics p = case p of
