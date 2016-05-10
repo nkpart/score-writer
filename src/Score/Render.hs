@@ -209,7 +209,7 @@ renderBeamed =
   . fmap renderNote
 
 type PrePost = ([L.Music], [ L.Music ])
-data RenderedNote = Graced (Maybe L.Music) PrePost (Maybe L.Music)
+data RenderedNote = Graced PrePost (Maybe L.Music)
                   | Tupleted Int Int [RenderedNote]
 
 -- Then we can have stages like:
@@ -219,25 +219,25 @@ data RenderedNote = Graced (Maybe L.Music) PrePost (Maybe L.Music)
 
 notesOnly :: Traversal' RenderedNote L.Music
 -- notesOnly = traverse . _NoteI . traverse
-notesOnly f (Graced mb x n) = Graced mb x <$> traverse f n
+notesOnly f (Graced x n) = Graced x <$> traverse f n
 notesOnly f (Tupleted n d xs) = Tupleted n d <$> (traverse . notesOnly) f xs
 
 
 firstMusic :: Traversal' RenderedNote L.Music
-firstMusic f (Graced mb x n) = Graced mb x <$> traverse f n
+firstMusic f (Graced x n) = Graced x <$> traverse f n
 firstMusic f (Tupleted n d xs) = case F.toList xs of
                                    [] -> pure (Tupleted n d xs)
                                    (h:t) -> fmap (\x' -> Tupleted n d (x':t)) (firstMusic f h)
 
 lastMusic :: Traversal' RenderedNote L.Music
-lastMusic f (Graced mb x n) = Graced mb x <$> traverse f n
+lastMusic f (Graced x n) = Graced x <$> traverse f n
 lastMusic f (Tupleted n d xs) =
   let xs' = F.toList xs
    in Tupleted n d <$> (_last . lastMusic) f xs'
 
 buildMusic :: [RenderedNote] -> [L.Music]
 buildMusic rns = rns >>= f
-  where f (Graced mb (pre', post) l) = pre' <> maybe (m2l l) (\v -> v : m2l l) mb <> post
+  where f (Graced (pre', post) l) = pre' <> m2l l <> post
         f (Tupleted n d more) =
           -- TODO: grace notes need to be rendered outside of the tuplet
           pure $
@@ -259,7 +259,7 @@ renderNote (Tuplet r h) = Tupleted (fromInteger $ numerator r) (fromInteger $ de
 renderNote (U u) = renderUnison u
 
 renderRest :: Duration -> RenderedNote
-renderRest n = Graced Nothing mempty (pure $ L.Rest (Just $ L.Duration n) [])
+renderRest n = Graced mempty (pure $ L.Rest (Just $ L.Duration n) [])
 
 renderUnison :: Unison -> RenderedNote
 renderUnison u =
@@ -271,8 +271,8 @@ renderUnison u =
       eu =
          [L.Raw "\\ottava #0"]
   in case u of
-           StartUnison -> Graced Nothing (su, mempty) Nothing
-           StopUnison -> Graced Nothing (mempty, eu) Nothing
+           StartUnison -> Graced (su, mempty) Nothing
+           StopUnison -> Graced (eu, mempty) Nothing
 
 tweaksForBigAccent :: [L.Music]
 tweaksForBigAccent =
@@ -352,7 +352,7 @@ renderNoteHead n =
       finalNote =
         startTie . endTie . addDynamics . addCresc . stopCresc $ thisHead
 
-  in Graced embell (preMusic, postMusic) (pure finalNote)
+  in Graced (F.toList embell <> preMusic, postMusic) (pure finalNote)
 
 mapDynamics :: Dynamics -> L.Dynamics
 mapDynamics p = case p of

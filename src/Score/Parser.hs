@@ -33,26 +33,22 @@ makeLenses ''ParseState
 ---------------------------
 
 defaultParseBeam :: Parser Beamed
-defaultParseBeam = evalStateT parseBeamed initDuration
- where initDuration = initParseState 4
+defaultParseBeam = evalStateT parseBeamed initParseState
 
 -- | A parser of many beams. The default duration for a note is a quarter.
 defaultParseBeams :: Parser [Beamed]
-defaultParseBeams = evalStateT parseBeams initDuration
- where initDuration = initParseState 4
+defaultParseBeams = evalStateT parseBeams initParseState
 
 -- | A parser of part - optional upbeat, beams, and repeat instructions
 defaultParsePart :: Parser Part
-defaultParsePart = evalStateT parsePart initDuration
- where initDuration = initParseState 4
+defaultParsePart = evalStateT parsePart initParseState
 
 defaultParseScore :: Parser Score
-defaultParseScore = evalStateT (parseScore defaultSignature) initDuration
- where initDuration = initParseState 4
-       defaultSignature = Signature 4 4
+defaultParseScore = evalStateT (parseScore defaultSignature) initParseState
+ where defaultSignature = _parseStateSignature initParseState
 
-initParseState :: Integer -> ParseState
-initParseState initDuration = ParseState initDuration (Signature 4 4)
+initParseState :: ParseState
+initParseState = ParseState 4 (Signature 4 4)
 
 type MonadParseState = MonadState ParseState
 
@@ -132,7 +128,7 @@ barCheck bs =
   do let Sum n = bs ^. traverse . _Duration . to Sum
      s <- use parseStateSignature
      unless (n == signatureDuration s) $
-       fail $ "BAD:" ++ show n
+       fail $ "Bar duration doesn't line up with the signature:" ++ show n
 
 parseBeamed :: (MonadParseState f, TokenParsing f) => f Beamed
 parseBeamed =
