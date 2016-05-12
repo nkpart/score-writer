@@ -1,5 +1,6 @@
 {-# LANGUAGE FlexibleContexts #-}
 {-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE NoMonomorphismRestriction #-}
 module Score.Render (
   printScorePage, Orientation(..)
   ) where
@@ -15,11 +16,14 @@ import           Data.VectorSpace
 import           Score.Types
 import           Text.Pretty
 
--- I think this would nicer as a stream
-data I = GraceI L.Music | NoteI [L.Music] | OtherMusicI [L.Music] | TupletStartI Int Int | TupletEndI
--- type S = [I]
+data RenderedNote = NoteMusic L.Music
+                  | OtherMusic [L.Music]
+                  | Tupleted Int Int [RenderedNote]
 
-makePrisms ''I
+_NoteMusic :: Traversal' RenderedNote L.Music
+_NoteMusic f (NoteMusic c) = NoteMusic <$> f c
+_NoteMusic _ (OtherMusic c) = pure (OtherMusic c)
+_NoteMusic f (Tupleted a b c) = Tupleted a b <$> (traverse . _NoteMusic) f c
 
 -- TODO:
 -- * prettier fonts - http://lilypond.1069038.n5.nabble.com/Change-font-of-titles-composer-etc-td25870.html
@@ -206,60 +210,35 @@ renderBeamed :: [Note] -> [L.Music]
 renderBeamed =
     buildMusic
   . addBeams
-  . fmap renderNote
+  . (>>= renderNote)
 
-type PrePost = ([L.Music], [ L.Music ])
-data RenderedNote = Graced PrePost (Maybe L.Music)
-                  | Tupleted Int Int [RenderedNote]
-
--- Then we can have stages like:
---   put grace notes before tuplet starts
---   finding the first note becomes easier (it's just the first Note)
---   finding the last note becomes easier (it's just the last Note)
-
-notesOnly :: Traversal' RenderedNote L.Music
--- notesOnly = traverse . _NoteI . traverse
-notesOnly f (Graced x n) = Graced x <$> traverse f n
-notesOnly f (Tupleted n d xs) = Tupleted n d <$> (traverse . notesOnly) f xs
-
-
-firstMusic :: Traversal' RenderedNote L.Music
-firstMusic f (Graced x n) = Graced x <$> traverse f n
-firstMusic f (Tupleted n d xs) = case F.toList xs of
-                                   [] -> pure (Tupleted n d xs)
-                                   (h:t) -> fmap (\x' -> Tupleted n d (x':t)) (firstMusic f h)
-
-lastMusic :: Traversal' RenderedNote L.Music
-lastMusic f (Graced x n) = Graced x <$> traverse f n
-lastMusic f (Tupleted n d xs) =
-  let xs' = F.toList xs
-   in Tupleted n d <$> (_last . lastMusic) f xs'
+addBeams :: [RenderedNote] -> [RenderedNote]
+addBeams rn =
+  let numNotes = lengthOf visitNotes rn
+      visitNotes = traverse . _NoteMusic
+  in
+  if numNotes > 1
+     then rn & taking 1 visitNotes %~ L.beginBeam
+             & dropping (numNotes - 1) visitNotes %~ L.endBeam
+     else rn
 
 buildMusic :: [RenderedNote] -> [L.Music]
 buildMusic rns = rns >>= f
-  where f (Graced (pre', post) l) = pre' <> m2l l <> post
+  where f (NoteMusic l) = [l]
+        f (OtherMusic l) = l
         f (Tupleted n d more) =
           -- TODO: grace notes need to be rendered outside of the tuplet
           pure $
           L.Tuplet n d (L.Sequential . F.toList . buildMusic $ more)
-        m2l (Just v) = [v]
-        m2l Nothing = []
 
-addBeams :: [RenderedNote] -> [RenderedNote]
-addBeams rn =
-  if lengthOf (traverse . notesOnly) rn > 1
-     then rn & _head . firstMusic %~ L.beginBeam
-             & _last . lastMusic %~ L.endBeam
-     else rn
-
-renderNote :: Note -> RenderedNote
+renderNote :: Note -> [RenderedNote]
 renderNote (Note h) = renderNoteHead h
-renderNote (Rest n) = renderRest n
-renderNote (Tuplet r h) = Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) (fmap renderNote h)
-renderNote (U u) = renderUnison u
+renderNote (Rest n) = [renderRest n]
+renderNote (Tuplet r h) = pure $ Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) (renderNote =<< h)
+renderNote (U u) = pure $ renderUnison u
 
 renderRest :: Duration -> RenderedNote
-renderRest n = Graced mempty (pure $ L.Rest (Just $ L.Duration n) [])
+renderRest n = OtherMusic (pure $ L.Rest (Just $ L.Duration n) [])
 
 renderUnison :: Unison -> RenderedNote
 renderUnison u =
@@ -271,8 +250,8 @@ renderUnison u =
       eu =
          [L.Raw "\\ottava #0"]
   in case u of
-           StartUnison -> Graced (su, mempty) Nothing
-           StopUnison -> Graced (eu, mempty) Nothing
+           StartUnison -> OtherMusic su
+           StopUnison -> OtherMusic eu
 
 tweaksForBigAccent :: [L.Music]
 tweaksForBigAccent =
@@ -286,7 +265,7 @@ revertsForBigAccent =
          ,L.Revert "Script.font-size"
          ,L.Revert "Script.staff-padding"]
 
-renderNoteHead :: NoteHead -> RenderedNote
+renderNoteHead :: NoteHead -> [RenderedNote]
 renderNoteHead n =
   let pitch = hand leftPitch rightPitch (n ^. noteHeadHand)
       oppPitch = hand rightPitch leftPitch (n ^. noteHeadHand)
@@ -332,7 +311,6 @@ renderNoteHead n =
       addDynamics = case n^.noteHeadDynamics of
                       Just p -> L.addDynamics' L.Above (mapDynamics p)
                       Nothing -> id
-
       addCresc = case n^.noteHeadCrescBegin of
                    Just Cresc -> L.beginCresc
                    Just Decresc -> L.beginDim
@@ -340,7 +318,6 @@ renderNoteHead n =
       stopCresc = if n^.noteHeadCrescEnd
                    then L.endCresc
                    else id
-
       preMusic = case n ^. noteHeadAccent of
                    Nothing -> []
                    Just AccentRegular -> []
@@ -352,7 +329,7 @@ renderNoteHead n =
       finalNote =
         startTie . endTie . addDynamics . addCresc . stopCresc $ thisHead
 
-  in Graced (F.toList embell <> preMusic, postMusic) (pure finalNote)
+  in [OtherMusic $ F.toList embell <> preMusic]  <> [NoteMusic finalNote] <> [OtherMusic postMusic]
 
 mapDynamics :: Dynamics -> L.Dynamics
 mapDynamics p = case p of
