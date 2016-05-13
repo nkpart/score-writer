@@ -1,24 +1,26 @@
-{-# LANGUAGE FlexibleContexts #-}
-{-# LANGUAGE TemplateHaskell #-}
+{-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
+{-# LANGUAGE TemplateHaskell           #-}
 module Score.Render (
   printScorePage, Orientation(..)
   ) where
 
 import           Control.Lens
-import qualified Data.Foldable       as F
-import Control.Monad.State.Strict
-import           Data.Semigroup ((<>))
-import qualified Data.Music.Lilypond as L hiding (F)
+import           Control.Monad.State.Strict
+import qualified Data.Foldable                as F
+import           Data.List.NonEmpty           (NonEmpty((:|)))
+import qualified Data.List.NonEmpty           as NE
+import qualified Data.Music.Lilypond          as L hiding (F)
 import qualified Data.Music.Lilypond.Dynamics as L
 import           Data.Ratio
+import           Data.Semigroup               ((<>))
 import           Data.VectorSpace
 import           Score.Types
 import           Text.Pretty
 
 data RenderedNote = NoteMusic L.Music
-                  | OtherMusic [L.Music]
-                  | Tupleted Int Int [RenderedNote]
+                  | OtherMusic (NE.NonEmpty L.Music)
+                  | Tupleted Int Int (NE.NonEmpty RenderedNote)
 
 _NoteMusic :: Traversal' RenderedNote L.Music
 _NoteMusic f (NoteMusic c) = NoteMusic <$> f c
@@ -108,13 +110,14 @@ renderPart :: Part -> State [NoteMod] L.Music
 renderPart p =
   do anacrusis <- renderAnacrusis (view partAnacrusis p)
      beams <- renderManyBeameds (p ^.. partBeams . traverse)
-     let thisPart = L.Sequential (anacrusis ++ beams)
-         r = fmap L.Sequential . renderManyBeameds . F.toList
+     let thisPart = L.Sequential (anacrusis <> F.toList beams)
+         r = fmap (L.Sequential . F.toList) . renderManyBeameds . F.toList
      case p ^. partRepeat of
        NoRepeat -> pure thisPart
        Repeat -> pure $ L.Repeat False 2 thisPart Nothing
        Return firstTime secondTime ->
-         do ft <- restoring (r firstTime)
+         do -- we want to pass the same mods into the first and second time, I think
+            ft <- restoring (r firstTime)
             st <- r secondTime
             pure $! L.Repeat False 2 thisPart (Just (ft, st))
 
@@ -125,7 +128,7 @@ renderAnacrusis anacrusis =
        Just a ->
          do let duration = sumOf _Duration a
             bs <- renderManyBeameds (pure a)
-            pure [ L.Partial (round $ 1/duration) (L.Sequential bs) ]
+            pure [ L.Partial (round $ 1/duration) (L.Sequential $ F.toList bs) ]
 
 beginScore :: Signature -> [L.Music] -> [L.Music]
 beginScore signature i =
@@ -194,11 +197,11 @@ renderSignature sig@(Signature n m) =
 
 renderManyBeameds :: [Beamed] -> State [NoteMod] [L.Music]
 renderManyBeameds bs =
-  join <$> traverse f bs
+  (join . fmap F.toList) <$> traverse f bs
   where f b = do notes <- resolveMods b
                  return $! renderBeamed notes
 
-resolveMods :: Beamed -> State [NoteMod] [Note]
+resolveMods :: MonadState [NoteMod] m => Beamed -> m (NonEmpty Note)
 resolveMods (Beamed b) =
             flip (traverse . _NoteHead) b $ \nh ->
                 do mods <- get
@@ -206,13 +209,13 @@ resolveMods (Beamed b) =
                    put (nh^.noteHeadMods)
                    return (v & noteHeadMods .~ [])
 
-renderBeamed :: [Note] -> [L.Music]
+renderBeamed :: NonEmpty Note -> NonEmpty L.Music
 renderBeamed =
     buildMusic
   . addBeams
   . (>>= renderNote)
 
-addBeams :: [RenderedNote] -> [RenderedNote]
+addBeams :: Traversable t => t RenderedNote -> t RenderedNote
 addBeams rn =
   let numNotes = lengthOf visitNotes rn
       visitNotes = traverse . _NoteMusic
@@ -222,19 +225,21 @@ addBeams rn =
              & dropping (numNotes - 1) visitNotes %~ L.endBeam
      else rn
 
-buildMusic :: [RenderedNote] -> [L.Music]
+buildMusic :: NonEmpty RenderedNote -> NonEmpty L.Music
 buildMusic rns = rns >>= f
-  where f (NoteMusic l) = [l]
+  where f (NoteMusic l) = pure l
         f (OtherMusic l) = l
         f (Tupleted n d more) =
           -- TODO: grace notes need to be rendered outside of the tuplet
           pure $
           L.Tuplet n d (L.Sequential . F.toList . buildMusic $ more)
 
-renderNote :: Note -> [RenderedNote]
+renderNote :: Note -> NE.NonEmpty RenderedNote
 renderNote (Note h) = renderNoteHead h
-renderNote (Rest n) = [renderRest n]
-renderNote (Tuplet r h) = pure $ Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) (renderNote =<< h)
+renderNote (Rest n) = pure (renderRest n)
+renderNote (Tuplet r h) =
+  let notes = renderNote =<< h
+   in pure $ Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) notes
 renderNote (U u) = pure $ renderUnison u
 
 renderRest :: Duration -> RenderedNote
@@ -243,33 +248,36 @@ renderRest n = OtherMusic (pure $ L.Rest (Just $ L.Duration n) [])
 renderUnison :: Unison -> RenderedNote
 renderUnison u =
   let su =
-         [L.Raw "\\ottava #1"
-         ,L.Set "Staff.middleCPosition" (L.toValue (0::Int))
+         L.Raw "\\ottava #1"
+         :|
+         [L.Set "Staff.middleCPosition" (L.toValue (0::Int))
          ,L.Set "Staff.ottavation" (L.toValue "")
          ]
       eu =
-         [L.Raw "\\ottava #0"]
+         pure (L.Raw "\\ottava #0")
   in case u of
            StartUnison -> OtherMusic su
            StopUnison -> OtherMusic eu
 
-tweaksForBigAccent :: [L.Music]
+tweaksForBigAccent :: NE.NonEmpty L.Music
 tweaksForBigAccent =
-         [L.Raw "\\once \\override Script.rotation = #'(-90 0 0)"
-         ,L.Raw "\\once \\override Script.font-size = #3"
+         L.Raw "\\once \\override Script.rotation = #'(-90 0 0)"
+         :|
+         [L.Raw "\\once \\override Script.font-size = #3"
          ,L.Raw "\\once \\override Script.staff-padding = #2.0"]
 
-revertsForBigAccent :: [L.Music]
+revertsForBigAccent :: NE.NonEmpty L.Music
 revertsForBigAccent =
-         [L.Revert "Script.rotation"
-         ,L.Revert "Script.font-size"
+         L.Revert "Script.rotation"
+         :|
+         [L.Revert "Script.font-size"
          ,L.Revert "Script.staff-padding"]
 
-renderNoteHead :: NoteHead -> [RenderedNote]
+renderNoteHead :: NoteHead -> NE.NonEmpty RenderedNote
 renderNoteHead n =
   let pitch = hand leftPitch rightPitch (n ^. noteHeadHand)
       oppPitch = hand rightPitch leftPitch (n ^. noteHeadHand)
-      embell = fmap f (n^.noteHeadEmbellishment)
+      embell = fmap (OtherMusic . pure . f) (n^.noteHeadEmbellishment)
                 where f Flam = slashBlock "grace" [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
                       f Drag =
                           slashBlock "grace" [
@@ -321,15 +329,15 @@ renderNoteHead n =
       preMusic = case n ^. noteHeadAccent of
                    Nothing -> []
                    Just AccentRegular -> []
-                   Just AccentBig -> tweaksForBigAccent
+                   Just AccentBig -> pure (OtherMusic tweaksForBigAccent)
       postMusic = case n ^. noteHeadAccent of
                    Nothing -> []
                    Just AccentRegular -> []
-                   Just AccentBig -> revertsForBigAccent
+                   Just AccentBig -> pure (OtherMusic revertsForBigAccent)
       finalNote =
         startTie . endTie . addDynamics . addCresc . stopCresc $ thisHead
-
-  in [OtherMusic $ F.toList embell <> preMusic]  <> [NoteMusic finalNote] <> [OtherMusic postMusic]
+  -- TODO Really. fromList.
+  in NE.fromList $ F.toList embell <> preMusic <> [NoteMusic finalNote] <> postMusic
 
 mapDynamics :: Dynamics -> L.Dynamics
 mapDynamics p = case p of
@@ -358,7 +366,7 @@ rightPitch :: L.Pitch
 rightPitch = L.Pitch (L.D, 0, 5)
 
 beamPositions :: L.Music
-beamPositions = L.Override "Beam.positions" (L.toLiteralValue "#'(-3.5 . -3.5)") 
+beamPositions = L.Override "Beam.positions" (L.toLiteralValue "#'(-3.5 . -3.5)")
 
 slashBlock :: String -> [L.Music] -> L.Music
 slashBlock x b = L.Slash x (L.Sequential b)

@@ -137,8 +137,8 @@ cut = _Duration %~ (* (1/2))
 -- | Bit builders
 
 singles :: Int -> Beamed -> Beamed
-singles n _ | n < 0 = error "bow bow"
-singles 0 _ = Beamed mempty
+singles n _ | n <= 0 = error "bow bow"
+singles 1 x = x
 singles n x = x <> singles (n-1) (x & swapHands)
 
 h2h :: Beamed -> [NoteHead -> NoteHead] -> Beamed

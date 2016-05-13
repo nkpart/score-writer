@@ -18,6 +18,7 @@ import           Data.Data
 import           Data.Foldable  (foldl')
 import           Data.Ratio
 import           Data.Semigroup
+import           Data.List.NonEmpty
 
 -- | The core types
 
@@ -59,7 +60,7 @@ data Cresc = Cresc | Decresc deriving (Eq, Show, Data, Typeable)
 data AccentSize = AccentRegular | AccentBig deriving (Eq, Show, Data, Typeable)
 
 data Note = Note NoteHead
-          | Tuplet (Ratio Integer) [Note]
+          | Tuplet (Ratio Integer) (NonEmpty Note)
           | Rest (Ratio Integer)
           | U Unison
             deriving (Eq, Show, Data, Typeable)
@@ -87,7 +88,7 @@ data Dynamics
   deriving (Eq,Show,Data,Typeable,Enum)
 
 newtype Beamed =
-  Beamed { _beamedNotes :: [Note] }
+  Beamed { _beamedNotes :: NonEmpty Note }
   deriving (Eq, Show, Data, Typeable)
 
 beam :: Note -> Beamed
@@ -250,6 +251,6 @@ applyMods xs a =
 instance Semigroup Beamed where
   Beamed a <> Beamed b = Beamed (a <> b)
 
-instance Monoid Beamed where
-  a `mappend` b = a <> b
-  mempty = Beamed mempty
+-- instance Monoid Beamed where
+--   a `mappend` b = a <> b
+--   mempty = Beamed mempty

@@ -11,10 +11,11 @@ module Score.Parser where
 import           Control.Applicative
 import           Control.Lens
 import           Control.Monad.State.Strict
-import           Data.Foldable
 import           Data.Functor
+import qualified Data.List.NonEmpty           as NE
 import           Data.Monoid
 import           Data.Ratio
+import           Data.Semigroup.Foldable
 import qualified Score.Prelude                as P
 import           Score.Types
 import qualified Text.PrettyPrint.ANSI.Leijen as Pretty hiding (empty, line,
@@ -199,8 +200,8 @@ endUnison =
 -- | Support
 ----------------
 
-foldSome :: (Monoid b, Alternative f) => f b -> f b
-foldSome p = fold <$> some p
+foldSome :: (P.Semigroup b, Alternative f) => f b -> f b
+foldSome p = fold1 . NE.fromList <$> some p
 
 tokenLine :: TokenParsing m => Unlined m a -> m a
 tokenLine = token . T.runUnlined

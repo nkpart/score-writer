@@ -82,6 +82,9 @@ renderingTests =
                        [testScoreFile "score-file Pipe Major Donald Maclean of Lewis"
                                       "pipe-major-donald-maclean-of-lewis.png"
                                       "library/pm-donald-maclean-of-lewis.score"
+                       ,testScoreFile "score-file 79ths"
+                                      "79ths.png"
+                                      "library/79ths.score"
                        ]
 
             ,testGroup "Signature setMomentAndStructure"
