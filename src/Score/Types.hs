@@ -42,7 +42,7 @@ data Unison =
 
 data NoteHead =
   NoteHead {_noteHeadHand :: Hand
-           ,_noteHeadAccent :: Maybe AccentSize
+           ,_noteHeadAccent :: AccentSize
            ,_noteHeadBuzz :: Bool
            ,_noteHeadDuration :: Ratio Integer
            ,_noteHeadSlurBegin :: Bool
@@ -57,7 +57,7 @@ data NoteHead =
   deriving (Eq, Show, Data, Typeable)
 
 data Cresc = Cresc | Decresc deriving (Eq, Show, Data, Typeable)
-data AccentSize = AccentRegular | AccentBig deriving (Eq, Show, Data, Typeable)
+data AccentSize = NoAccent |  AccentRegular | AccentBig deriving (Eq, Show, Data, Typeable)
 
 data Note = Note NoteHead
           | Tuplet (Ratio Integer) (NonEmpty Note)

@@ -268,10 +268,9 @@ tweaksForBigAccent =
 
 revertsForBigAccent :: NE.NonEmpty L.Music
 revertsForBigAccent =
-         L.Revert "Script.rotation"
-         :|
-         [L.Revert "Script.font-size"
-         ,L.Revert "Script.staff-padding"]
+   L.Revert "Script.rotation" :|
+   L.Revert "Script.font-size" :
+   L.Revert "Script.staff-padding" : []
 
 renderNoteHead :: NoteHead -> NE.NonEmpty RenderedNote
 renderNoteHead n =
@@ -298,9 +297,9 @@ renderNoteHead n =
       events =
         let accF =
               case n^.noteHeadAccent of
-                Just AccentBig -> (L.Articulation L.Above L.Accent:)
-                Just AccentRegular -> (L.Articulation L.Above L.Accent:)
-                Nothing -> id
+                AccentBig -> (L.Articulation L.Above L.Accent:)
+                AccentRegular -> (L.Articulation L.Above L.Accent:)
+                NoAccent -> id
             buzzF =
               if n^.noteHeadBuzz
                  -- TODO: tremolo doesn't look quite right
@@ -327,13 +326,13 @@ renderNoteHead n =
                    then L.endCresc
                    else id
       preMusic = case n ^. noteHeadAccent of
-                   Nothing -> []
-                   Just AccentRegular -> []
-                   Just AccentBig -> pure (OtherMusic tweaksForBigAccent)
+                   NoAccent -> []
+                   AccentRegular -> []
+                   AccentBig -> pure (OtherMusic tweaksForBigAccent)
       postMusic = case n ^. noteHeadAccent of
-                   Nothing -> []
-                   Just AccentRegular -> []
-                   Just AccentBig -> pure (OtherMusic revertsForBigAccent)
+                   NoAccent -> []
+                   AccentRegular -> []
+                   AccentBig -> pure (OtherMusic revertsForBigAccent)
       finalNote =
         startTie . endTie . addDynamics . addCresc . stopCresc $ thisHead
   -- TODO Really. fromList.

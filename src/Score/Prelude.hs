@@ -82,7 +82,7 @@ thisUnison :: Beamed -> Beamed
 thisUnison x = startUnison <-> x <-> stopUnison
 
 aNote :: Hand -> Ratio Integer -> Note
-aNote h d = Note $ NoteHead h Nothing False d False False Nothing False Nothing [] Nothing
+aNote h d = Note $ NoteHead h NoAccent False d False False Nothing False Nothing [] Nothing
 
 -- | Note modifiers
 
@@ -111,10 +111,10 @@ ruff :: AsNoteHead (->) Identity t => t -> t
 ruff = _NoteHead . noteHeadEmbellishment .~ Just Ruff
 
 accent :: AsNoteHead (->) Identity t => t -> t
-accent = _NoteHead . noteHeadAccent .~ Just AccentRegular
+accent = _NoteHead . noteHeadAccent .~ AccentRegular
 
 bigAccent :: AsNoteHead (->) Identity t => t -> t
-bigAccent = _NoteHead . noteHeadAccent .~ Just AccentBig
+bigAccent = _NoteHead . noteHeadAccent .~ AccentBig
 
 startCrescendo :: AsNoteHead (->) Identity t => t -> t
 startCrescendo =
