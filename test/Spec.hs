@@ -109,7 +109,7 @@ renderingTests =
 testScores name expected scores =
   goldenVsFile name fullExpected outputFile (writeScorePage Portrait PNG shortOutput scores)
   where outputFile = "tmp" </> name <> ".png"
-        shortOutput = dropExtension outputFile
+        shortOutput = outputFile
         fullExpected = "test/expected" </> expected
 
 testScoreFile name expected file =
@@ -118,7 +118,7 @@ testScoreFile name expected file =
                outputFile
                (render PNG Portrait file shortOutput)
   where outputFile = "tmp" </> name <> ".png"
-        shortOutput = dropExtension outputFile
+        shortOutput = outputFile
         fullExpected = "test/expected" </> expected
 
 singleParted name sig part =
