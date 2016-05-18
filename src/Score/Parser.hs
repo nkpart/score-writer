@@ -103,8 +103,8 @@ parsePart =
                   st = try (symbol secondTimeMarker) *> foldSome parseBeams
                in optional $
                   (Return <$> ft <*> st) <|>
-                  (Return <$> ft <*> pure []) <|>
-                  (Return <$> pure [] <*> st) <|>
+                  (flip Return [] <$> ft) <|>
+                  (Return [] <$> st) <|>
                   (try (symbol repeatSymbol) $> Repeat)
        pure $! Part ana beams (maybe NoRepeat id rep)
 
