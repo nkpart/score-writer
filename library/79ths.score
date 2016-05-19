@@ -3,11 +3,19 @@ style "March"
 composer "J. Reid Maxwell Feb. 27 1997"
 signature 2/4
 ===================================
-16R.\<\ L-\.\ /
-8Rf.^ L-\p\, R~ L    | u( 4R~\<\, 8R\.\ )u L\p\
-u( R~ {16L )u R L}, u( 16Rf.^ R-~ R. L-^ )u  | 32R L R L u( 8R^~, L 16R. L-
-8Rf.^ )u L-\p\, R~ L | u( 4R~\<\, 8R\.\ )u L\p\
-u( R~ 16L. )u R-~, R. u( L-^\<\ 32R L R L\.\ | 8R^ R~, 4L )u
+
+  16R.\<\ L-\.\ /
+
+* ^    \p\           [\<\ \.\] \p\
+  8Rf. L-, R~ L    | 4R~, 8R   L
+*                        ^            ^                     ^
+  u( R~ {16L )u R L}, u( 16Rf. R-~ R. L- )u  | 32R L R L u( 8R~, L 16R. L-
+
+* ^       \p\           \<\  \.\   \p\
+  8Rf. )u L-, R~ L | u( 4R~, 8R )u L
+
+*                          ^\<\       \.\ 
+  u( R~ 16L. )u R-~, R. u( L- 32R L R L | 8R^ R~, 4L )u
 :|
 -----------------------------------
 8L /

@@ -18,137 +18,12 @@ main =
   do assembleSet "medley2016.pdf" [
          landscape [innerGuard]
        , landscape [theCurlew, boysOfTheLough]
-       , landscape [shoshannas, ladyMackenzie]
+       , landscape [shoshannas]
        , landscape [missGirdle, pmGeorgeAllan]
        ]
-     assembleSet "msr2016.pdf" [
-         portrait [_79ths]
-       , landscape [dorrator, lexy]
-       ]
-
-msr2016 :: [[Score]]
-msr2016 = [[_79ths], [dorrator], [lexy]]
 
 su = startUnison
-
 eu = stopUnison
-
-_79ths :: Score
-_79ths =
-  Score (Details "The 79th's Farewell to Gibraltar"
-                 "March"
-                 "J. Reid Maxwell Feb. 27 1997"
-                 Nothing)
-        (Signature 2 4)
-        [p1, p2, p3, p4] -- [p1, p2, p3, p4]
-  where p1 = buildPart $
-          do
-             upbeat (dotCut (r16<->l16))
-             bars [r8&dot.flam<-> l8&cut, r8&roll<->l8
-                  ,su,r4&roll,r8<->eu<->l8]
-             bars [su, r8&roll<->triplet (l16<->eu<->r16<->l16), su <-> r16&dot.flam<->r16&cut.roll<->r16&dot<->l16&cut.accent <-> eu
-                  ,singles 4 r32<->su<->r8&accent.roll, l8<->r16&dot<->l16&cut]
-
-             bars [r8&dot.flam<->eu<-> l8&cut, r8&roll<->l8
-                  ,su,r4&roll,r8<->eu<->l8]
-
-             bars endingPhrase
-             thenRepeat
-
-        p2 = buildPart $
-          do upbeat l8
-             bars [r8&roll<->dotCut(l16<->su<->r16&accent), dotCut (l16<->l16<->r16&flam<->eu<->l16)]
-             bars [triplet (r16<->l16<->r16) <-> dotCut (su<->l16&flam<->l16), r8&roll <-> triplet (l16<->r16<->l16)]
-             bars [r8&flam<->eu<->r16&roll.dot<->r16&cut, dotCut (l16<->su<->r16&accent<->l16<->l16)]
-             bars [r8&flam<->eu<->r8&roll, su <-> l8&roll.accent<-> singles 4 r32]
-             bars [r8&accent<->eu<->r16&roll.dot<->r16&cut, dotCut (l16<->l16<->r16&flam<->su<->l16&accent)]
-             bars [triplet (r16<->l16<->r16) <-> dotCut (l16&flam<->l16), r8&flam <-> eu <-> l8]
-             bars endingPhrase
-             thenRepeat
-
-        p3 = buildPart $
-          do upbeat (dotCut (su <-> r16<->l16))
-             bars [r8&roll<->triplet (l16<->r16<->l16), triplet (r16&flam<->eu<->l16<->r16) <-> triplet (l16&flam.thisUnison <-> r16 <-> l16)]
-             bars [triplet (r16<->l16<->su<->r16&flam)<->dotCut(l16<->l16), r8&roll<->triplet(l16<->r16<->l16)]
-             bars [dotCut (r16&flam<->eu<->l16<->r16&roll<->r16), dotCut(l16<->su<->r16&drag<->r16<->l16&accent)]
-             bars [singles 4 r32 <-> r8&roll.accent, l8<->eu<->r16&dot<->l16&cut]
-             bars [r8&roll <-> triplet (l16<->r16<->l16), startUnison<->r8&roll<->l8&roll.accent]
-             bars [triplet (r16<->l16<->r16&accent) <-> dotCut(l16<->l16), r8&flam, eu, l8]
-             bars endingPhrase
-             thenRepeat
-
-        p4 = buildPart $
-          do upbeat (dotCut (r16<->l16))
-             bars [r8&roll.dot<->l8&cut, r8&roll.accent<->l8]
-             bars [su, r4&roll, r8<->eu<->l8]
-             bars [su,r8&roll<->l16&dot<->eu<->r16&cut.accent, dotCut (l16<->l16) <-> singles 4 r32]
-             bars [r8<->su<->r8&roll, l8&roll.accent<->singles 4 r32]
-             bars [r8<->dotCut(r16&roll<->r16), dotCut (l16<->l16)<->r16&drag.cut<->r16&dot.accent, eu]
-             bars [l16&dot<->su<->r16&cut.roll<->triplet(r16<->l16<->r16), l8&flam<->eu<->l8]
-             bars endingPhrase
-             thenRepeat
-
-        endingPhrase = [ su<->r8&roll<->l16&dot<->eu<->r16&cut.roll, r16&dot<->su<->l16&cut.accent<->singles 4 r32
-                         , r8&accent<->r8&roll, l8, eu, rest8
-                       ]
-
-dorrator :: Score
-dorrator =
-  Score (Details "Dorrator Bridge"
-                 "Strathspey"
-                 ""
-                 (Just "BBC Old Collegians Pipe Band"))
-        (Signature 4 4)
-        [p1, p2]
-  where p1 = buildPart $
-            do bars [r4&flam, l4&flam, r8&ruff.dot<->su<->l8&cut.flam, r8&cut<->l8&dot.roll.accent]
-               end3
-               thenRepeat
-        p2 = buildPart $
-            do bars [su, r4&accent.roll, triplet (singles 4 r16 <-> r8), eu, triplet (l8<->r8<->l8), su, r4&roll]
-               end3
-               thenRepeat
-        end3 = do
-               bars [r8&dot<->l8&cut, r8&flam.dot<->l8&flam.cut, eu, triplet (singles 4 r16 <-> r8), triplet (l8<->r8<->l8)]
-               bars [su, r4&accent.roll, triplet (singles 4 r16 <-> r8), eu, triplet (l8<->r8&drag<->r8&accent), triplet (l8<->r8<->l8)]
-               bars [triplet (su<->r8<->l8<->r8<->eu) & flam, triplet (l8<->r8<->su<->l8&flam<->eu), dotCut (r8<->su<->r8&accent.ruff), l4&accent, eu]
-
-lexy :: Score
-lexy = Score (Details "Lexy McAskill"
-                 "Reel"
-                 ""
-                 (Just "BBC Old Collegians Pipe Band"))
-        (Signature 4 4)
-        [p1, p2]
-  where
-    p1 = buildPart $
-      do bars [r4&flam, su, r4&roll, triplet(l8<->r8<->l8), dotCut (r8&flam<->eu<->l8)]
-         bars [r4&flam, dotCut (r8&flam<->su<->l8&accent), dotCut(r8<->r8), l8&dot.flam<->eu<->l8&cut]
-         bars [r4&flam, su, r4&roll, triplet(l8<->r8<->l8), dotCut (r8&flam<->l8&accent<->eu)]
-         bars [singles 4 r16, dotCut (r8&accent<->l8), su, r4&roll, l4, eu]
-
-         thenRepeat
-
-    p2 = buildPart $
-      do upbeat l16
-         bars [r4&roll.accent.thisUnison, su, l4&roll.accent, r4&roll.accent, dotCut (l8<->eu<->l8)]
-         bars [triplet(r8<->l8<->r8), dotCut (l8&flam<->su<->r8&accent), dotCut(l8<->l8), dotCut(r8&flam<->eu<->l8)]
-         bars [r4&roll.accent.thisUnison, su, l4&roll.accent, r4&roll.accent, dotCut (l8<->l8), eu]
-         bars [singles 4 r16, dotCut (r8&accent<->l8), su, r4&roll, l4, eu]
-
-         thenRepeat
-
-
-
-medley2016 :: [Score]
-medley2016 =
-  [innerGuard
-   , theCurlew, boysOfTheLough
-   , shoshannas
-   , ladyMackenzie
-   , missGirdle
-   , error "pmGeorgeAllan"
-  ]
 
 innerGuard :: Score
 innerGuard =
@@ -277,41 +152,6 @@ shoshannas =
               bars [r8&flam<->triplet(r16<->l16<->r16), l8&flam<->l8, r8&roll<->l8]
               bars [r16&flam<->l16<->r16<->l16&flam,r16<->l16&flam<->r16<->l16, r8&accent.roll<->l8&accent.roll]
               bars [r4, eu, rest4, rest4]
-
-ladyMackenzie :: Score
-ladyMackenzie =
-   Score (Details "Lady MacKenzie of Fairbairn"
-                  "Strathspey"
-                  ""
-         (Just "BBC OCA Pipe Band"))
-         (Signature 4 4)
-         [p1, p2]
-   where ar = accent . roll
-         p1 = buildPart $
-         -- TODO, the second 4 bars is the same as the first, no unisons.
-         -- need a function that strips them out
-           do bars [r4&roll, r4, r8&ruff.dot, l8&cut, su, r4&roll]
-              bars [r4, eu, triplet(singles 4 r16<-> r8&flam.thisUnison), triplet (l8<->r8<->su<->l8&flam), (r8&flam.dot<->l8&cut)]
-              bars [triplet(r8<->l8<->r8&accent), r8&accent.roll.dot<->l8&cut.roll, eu, (triplet (r8&roll<->r8&accent<->l8&accent.roll)), triplet (l8&accent<->r8<->l8)]
-              bars [su,r4&flam, r8&ruff.dot<->r8&drag.cut, eu, triplet(singles 4 r16<->su<->r8&accent), triplet (l8&flam<->r8<->l8), eu]
-
-              bars [r4&roll, r4, r8&ruff.dot, l8&cut, r4&roll]
-              bars [r4, triplet(singles 4 r16<-> r8&flam), triplet (l8<->r8<->l8&flam), (r8&flam.dot<->l8&cut)]
-              bars [triplet(r8<->l8<->r8&accent), r8&accent.roll.dot<->l8&cut.roll, (triplet (r8&roll<->r8&accent<->l8&accent.roll)), triplet (l8&accent<->r8<->l8)]
-              bars [r4&flam, r8&ruff.dot<->r8&drag.cut, triplet(singles 4 r16<->r8&accent), triplet (l8&flam<->r8<->l8), eu]
-
-         p2 = buildPart $
-           do bars $
-                   [r4&ar.thisUnison, dotCut(su<->r8&ar<->l8&ar<->eu), triplet(r8&roll<->r8&accent<->l8&ar), dotCut(su<->l8&ar<->r8&ar<->eu)] <>
-                   [triplet(r8&roll<->l8&accent<->r8&ar), dotCut(su<->r8&ar<->l8&ar<->eu), triplet(r8&roll<->r8&accent<->l8&ar), triplet(su<->l8&accent<->r8<->l8)] <>
-                   [r4&flam, eu, triplet(singles 4 r16 <-> r8&flam.thisUnison), triplet(l8<->r8<->su<->l8&flam), dotCut(r8&flam<->l8)]
-              bars [r4&flam, r8&ruff.dot<->r8&drag.cut, eu, triplet(singles 4 r16<->su<->r8&accent), triplet (l8&flam<->r8<->l8), eu]
-
-              bars $ [r4&ar, dotCut(r8&ar<->l8&ar), triplet(r8&roll<->r8&accent<->l8&ar), dotCut(l8&ar<->r8&ar)] <>
-                   [triplet(r8&roll<->l8&accent<->r8&ar), dotCut(r8&ar<->l8&ar), triplet(r8&roll<->r8&accent<->l8&ar), triplet(l8&accent<->r8<->l8)] <>
-                   [r4&flam, triplet(singles 4 r16 <-> r8&flam), triplet(l8<->r8<->l8&flam), dotCut(r8&flam<->l8)]
-              bars [r4&flam, r8&ruff.dot<->r8&drag.cut, triplet(singles 4 r16<->r8&accent), l4&roll]
-
 
 missGirdle :: Score
 missGirdle =
