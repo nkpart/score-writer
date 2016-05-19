@@ -18,12 +18,25 @@ import           Data.VectorSpace
 import           Score.Types
 import           Text.Pretty
 
-data RenderedNote = NoteMusic L.Music
-                  | OtherMusic (NE.NonEmpty L.Music)
-                  | Tupleted Int Int (NE.NonEmpty RenderedNote)
+data RenderedNote
+  =
+    -- This lets us add beams just to these bits of music, otherwise
+    -- we might attach them to things that aren't notes (overrides, etc.)
+    NoteMusic L.Music
+  |
+    -- We track grace notes because they need to be floated outside of
+    -- tuplets
+    GraceMusic (NE.NonEmpty L.Music)
+    -- Any other bits of lilypond data (overrides, etc.) falls here
+  | OtherMusic (NE.NonEmpty L.Music)
+    -- Tuplets need to be rendered as a block, so they are recursive
+  | Tupleted Int
+             Int
+             (NE.NonEmpty RenderedNote)
 
 _NoteMusic :: Traversal' RenderedNote L.Music
 _NoteMusic f (NoteMusic c) = NoteMusic <$> f c
+_NoteMusic _ (GraceMusic c) = pure (GraceMusic c)
 _NoteMusic _ (OtherMusic c) = pure (OtherMusic c)
 _NoteMusic f (Tupleted a b c) = Tupleted a b <$> (traverse . _NoteMusic) f c
 
@@ -228,9 +241,9 @@ addBeams rn =
 buildMusic :: NonEmpty RenderedNote -> NonEmpty L.Music
 buildMusic rns = rns >>= f
   where f (NoteMusic l) = pure l
+        f (GraceMusic l) = l
         f (OtherMusic l) = l
         f (Tupleted n d more) =
-          -- TODO: grace notes need to be rendered outside of the tuplet
           pure $
           L.Tuplet n d (L.Sequential . F.toList . buildMusic $ more)
 
@@ -239,7 +252,12 @@ renderNote (Note h) = renderNoteHead h
 renderNote (Rest n) = pure (renderRest n)
 renderNote (Tuplet r h) =
   let notes = renderNote =<< h
-   in pure $ Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r) notes
+      tupletGroup = Tupleted (fromInteger $ numerator r) (fromInteger $ denominator r)
+      mkTuplet ns =
+        case ns of
+          GraceMusic o :| (x:xs) -> GraceMusic o <| mkTuplet (x:|xs)
+          _ -> pure $ tupletGroup ns
+   in mkTuplet notes
 renderNote (U u) = pure $ renderUnison u
 
 renderRest :: Duration -> RenderedNote
@@ -256,8 +274,8 @@ renderUnison u =
       eu =
          pure (L.Raw "\\ottava #0")
   in case u of
-           StartUnison -> OtherMusic su
-           StopUnison -> OtherMusic eu
+           StartUnison -> GraceMusic su
+           StopUnison -> GraceMusic eu
 
 tweaksForBigAccent :: NE.NonEmpty L.Music
 tweaksForBigAccent =
@@ -276,7 +294,7 @@ renderNoteHead :: NoteHead -> NE.NonEmpty RenderedNote
 renderNoteHead n =
   let pitch = hand leftPitch rightPitch (n ^. noteHeadHand)
       oppPitch = hand rightPitch leftPitch (n ^. noteHeadHand)
-      embell = fmap (OtherMusic . pure . f) (n^.noteHeadEmbellishment)
+      embell = fmap (GraceMusic . pure . f) (n^.noteHeadEmbellishment)
                 where f Flam = slashBlock "grace" [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
                       f Drag =
                           slashBlock "grace" [
