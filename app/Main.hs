@@ -15,7 +15,7 @@ import           System.Process
 
 data CLI
   = Watch Orientation FilePath String
-  | Render Orientation FilePath String
+  | Render Orientation [FilePath] String
 
 cli :: Parser CLI
 cli =
@@ -28,8 +28,8 @@ cli =
     ,command "render"
              (info (Render <$>
                     orientation <*>
-                    strArgument (metavar "SCORE_FILE") <*>
-                    strArgument (metavar "OUTPUT"))
+                    some (strOption (long "score-file")) <*>
+                    strOption (long "output-file"))
               (progDesc "Render a .score file to PDF")
              )
              ]

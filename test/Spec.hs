@@ -127,7 +127,7 @@ testScoreFile name expected file =
   goldenVsFile name
                fullExpected
                outputFile
-               (render PNG Portrait file shortOutput)
+               (render PNG Portrait [file] shortOutput)
   where outputFile = "tmp" </> name <> ".png"
         shortOutput = outputFile
         fullExpected = "test/expected" </> expected

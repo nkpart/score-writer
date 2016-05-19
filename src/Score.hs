@@ -12,12 +12,12 @@ import           System.IO.Temp
 import           System.Process
 import           Text.Trifecta      (parseFromFile)
 
-render :: Format -> Orientation -> FilePath -> FilePath -> IO ()
-render p orientation inp outp =
-  do x <- parseFromFile defaultParseScore inp
-     case x of
+render :: Format -> Orientation -> [FilePath] -> FilePath -> IO ()
+render p orientation inputs outp =
+  do scores <- traverse ( parseFromFile defaultParseScore ) inputs
+     case sequence scores of
        Nothing -> exitFailure
-       Just score -> writeScorePage orientation p outp [score]
+       Just vs -> writeScorePage orientation p outp vs
 
 assembleSet :: FilePath -> [(Orientation, [Score])] -> IO ()
 assembleSet destFile things =
