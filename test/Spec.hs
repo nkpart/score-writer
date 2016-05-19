@@ -1,13 +1,16 @@
 {-# LANGUAGE OverloadedLists #-}
 
+import           Test.HUnit ((~?))
 import           Test.Tasty
-import           Test.Tasty.HUnit
 import           Test.Tasty.Golden
+import           Test.Tasty.HUnit
 
-import           BBCOCA hiding (main)
+import           BBCOCA            hiding (main)
+import           LilypondProcess
 import           Score
-import qualified Score.Parser as P
+import qualified Score.Parser      as P
 import           Score.Prelude
+import           System.Directory
 import           System.FilePath
 
 main :: IO ()
@@ -15,7 +18,15 @@ main =
   defaultMain (testGroup "Tests" [
                    renderingTests
                   ,parserTests
+                  ,lilypondProcessTests
                   ])
+
+lilypondProcessTests :: TestTree
+lilypondProcessTests =
+  let test =
+        (do runLilypond PNG "x.png" "{ c' }"
+            doesFileExist "x.png") @? "runLilypond writes to the requested file"
+  in testCase "runLilypond" test
 
 parserTests :: TestTree
 parserTests =
