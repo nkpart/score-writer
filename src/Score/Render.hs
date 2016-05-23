@@ -150,6 +150,7 @@ beginScore signature i =
             "with"
             [L.Override "StaffSymbol.line-count" (L.toValue (1 :: Int))
             ,L.Override "Stem.direction" (L.toValue (-1 :: Int))
+            -- TODO play with beam thickness
             -- ,L.Override "Beam.beam-thickness" (L.toValue (0.4 :: Double))
             ,L.Override "StemTremolo.beam-thickness" (L.toValue (0.3 :: Double))
             ,L.Override "StemTremolo.slope" (L.toValue (0.35 :: Double))
@@ -295,7 +296,7 @@ renderNoteHead n =
   let pitch = hand leftPitch rightPitch (n ^. noteHeadHand)
       oppPitch = hand rightPitch leftPitch (n ^. noteHeadHand)
       embell = fmap (GraceMusic . f) (n^.noteHeadEmbellishment)
-                where f Flam = pure $ slashBlock "grace" [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
+                where f Flam = pure $ slashBlock "slashedGrace" [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
                       f Drag =
                           -- L.Raw "\\newSpacingSection" :|
                           pure $
