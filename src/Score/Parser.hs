@@ -17,7 +17,7 @@ import           Data.Int
 import qualified Data.List.NonEmpty           as NE
 import qualified Data.Map.Strict              as M
 import           Data.Maybe
-import           Data.Monoid hiding ((<>))
+import           Data.Monoid                  hiding ((<>))
 import           Data.Ratio
 import           Data.Semigroup
 import           Data.Semigroup.Foldable
@@ -97,8 +97,7 @@ parseHeader s =
 parsePart :: (DeltaParsing f, MonadParseState f, TokenParsing f) => f Part
 parsePart =
     do -- Upbeat (overlaps regular beams)
-       let anacrusisDelimeter = "/"
-       ana <- optional (try (tokenLine (parseBeamed M.empty <* symbol anacrusisDelimeter)))
+       ana <- anacrusis
        -- Regular beams (overlaps firsttime/secondtime markers)
        beams <- beamLines
        -- First time
@@ -114,15 +113,23 @@ parsePart =
                   (try (symbol repeatSymbol) $> Repeat)
        pure $! Part ana beams (fromMaybe NoRepeat rep)
 
+anacrusis :: (MonadState ParseState m, DeltaParsing m) => m (Maybe Beamed)
+anacrusis =
+  do let anacrusisDelimeter = "/"
+         anacrusisLine v = (tokenLine (parseBeamed v) <* symbol anacrusisDelimeter)
+     optional (try (optionalDynamics >>= anacrusisLine))
+
 beamLines :: (MonadState ParseState f, DeltaParsing f) => f [Beamed]
 beamLines =
-  foldSome $
-     do mods <- optional dynamicsLine
-        parseBeams (fromMaybe M.empty mods)
+  foldSome (optionalDynamics >>= parseBeams)
 
 type Mod = Endo Beamed
 
 type X = M.Map Int64 Mod
+
+optionalDynamics :: DeltaParsing p => p (M.Map Int64 Mod)
+optionalDynamics =
+  fromMaybe M.empty <$> optional dynamicsLine
 
 dynamicsLine :: DeltaParsing p => p (M.Map Int64 Mod)
 dynamicsLine = token $ runUnlined (symbol "*" *> (fold <$> many dynamics))
@@ -159,7 +166,7 @@ barCheck bs =
 
 parseBeamed :: (DeltaParsing f, MonadParseState f, TokenParsing f) => X -> f Beamed
 parseBeamed x =
-  foldSome (optional someSpace *> ((note x) <|> (triplet x) <|> startUnison <|> endUnison))
+  foldSome (optional someSpace *> (note x <|> triplet x <|> startUnison <|> endUnison))
 
 duration :: (MonadParseState f, TokenParsing f) => f ()
 duration =
