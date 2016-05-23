@@ -43,7 +43,6 @@ _NoteMusic f (Tupleted a b c) = Tupleted a b <$> (traverse . _NoteMusic) f c
 -- TODO:
 -- * prettier fonts - http://lilypond.1069038.n5.nabble.com/Change-font-of-titles-composer-etc-td25870.html
 -- * tweak note styles to look like this: http://drummingmad.com/what-are-unisons/
--- * dynamics
 -- * staff height bigger
 
 data Orientation = Portrait | Landscape deriving (Eq, Show)
@@ -151,6 +150,7 @@ beginScore signature i =
             "with"
             [L.Override "StaffSymbol.line-count" (L.toValue (1 :: Int))
             ,L.Override "Stem.direction" (L.toValue (-1 :: Int))
+            -- ,L.Override "Beam.beam-thickness" (L.toValue (0.4 :: Double))
             ,L.Override "StemTremolo.beam-thickness" (L.toValue (0.3 :: Double))
             ,L.Override "StemTremolo.slope" (L.toValue (0.35 :: Double))
             -- ,L.Override "StemTremolo.Y-offset" (L.toValue ( 0.8))
@@ -164,7 +164,7 @@ beginScore signature i =
       spannerStyles <>
       [beamPositions] <>
       i)]
-  where -- turn text spanners into unison marks
+  where -- turn text spanners into Unison marks
         spannerStyles = [
           L.Override "TextSpanner.style" (L.toLiteralValue "#'line'")
          ,L.Override "TextSpanner.bound-details.left.text" $ L.toLiteralValue "\\markup { \\draw-line #'(0 . -1.5) }"
@@ -182,7 +182,7 @@ beginScore signature i =
          ,L.Override "Staff.OttavaBracket.shorten-pair"  $ L.toLiteralValue "#'(-0.4 . -0.4)"
          ,L.Override "Staff.OttavaBracket.staff-padding" $ L.toValue (3.0::Double)
          ,L.Override "Staff.OttavaBracket.minimum-length" $ L.toValue (1.0::Double)
-           ]
+         ]
 
 setMomentAndStructure :: Integer -> [Integer] -> [L.Music]
 setMomentAndStructure moment momentGroups =
@@ -294,16 +294,21 @@ renderNoteHead :: NoteHead -> NE.NonEmpty RenderedNote
 renderNoteHead n =
   let pitch = hand leftPitch rightPitch (n ^. noteHeadHand)
       oppPitch = hand rightPitch leftPitch (n ^. noteHeadHand)
-      embell = fmap (GraceMusic . pure . f) (n^.noteHeadEmbellishment)
-                where f Flam = slashBlock "grace" [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
+      embell = fmap (GraceMusic . f) (n^.noteHeadEmbellishment)
+                where f Flam = pure $ slashBlock "grace" [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
                       f Drag =
-                          slashBlock "grace" [
-                            L.Revert "Beam.positions",
-                            0.25 *^ L.note (L.NotePitch oppPitch Nothing),
-                            0.25 *^ L.note (L.NotePitch oppPitch Nothing),
-                            beamPositions
-                            ]
-                      f Ruff =
+                          -- L.Raw "\\newSpacingSection" :|
+                          pure $
+                            -- L.Override "Score.SpacingSpanner.spacing-increment" (L.toLiteralValue "#2"),
+                            slashBlock "grace" [
+                              L.Revert "Beam.positions",
+                              0.25 *^ L.note (L.NotePitch oppPitch Nothing),
+                              0.25 *^ L.note (L.NotePitch oppPitch Nothing),
+                              beamPositions
+                              ] --,
+                            -- L.Revert "Score.SpacingSpanner.spacing-increment"
+                          -- ]
+                      f Ruff = pure $
                         L.Slash1 "grace" ^+^
                          L.Sequential [
                             L.Revert "Beam.positions",
