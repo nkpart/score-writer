@@ -64,7 +64,10 @@ rest64 = restn (1/64)
 ln, rn, restn :: Ratio Integer -> Beamed
 ln = beam . aNote L
 rn = beam . aNote R
-restn = beam . Rest
+restn = beam . aRest
+
+aRest :: Ratio Integer -> Note
+aRest = Rest
 
 triplet :: Beamed -> Beamed
 triplet = tuplet 3 2

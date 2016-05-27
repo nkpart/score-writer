@@ -177,12 +177,20 @@ note :: (DeltaParsing m, MonadParseState m, TokenParsing m) => X -> m Beamed
 note x = token $
        do c <- column <$> position
           skipOptional duration
-          h <- noteHand
-          mods <- fold <$> many noteMod
-          let moreMods = M.lookup c x
-              Endo mods' = maybe mods (<> mods) moreMods
           thisDuration <- use parseStateNoteDuration
-          pure . mods' . P.beam $ P.aNote h (1%thisDuration)
+          let noteheadP =
+                do h <- noteHand
+                   mods <- fold <$> many noteMod
+                   let Endo mods' = lookupMods x c <> mods
+                   pure . mods' . P.beam $ P.aNote h (1%thisDuration)
+              restP =
+                   on '_' (P.beam $ P.aRest (1%thisDuration))
+          noteheadP <|> restP
+
+lookupMods :: X -> Int64 -> Endo Beamed
+lookupMods x c =
+          let moreMods = M.lookup c x
+           in maybe mempty id moreMods
 
 -- | { beam }
 triplet :: (DeltaParsing f, MonadParseState f, TokenParsing f) => X -> f Beamed

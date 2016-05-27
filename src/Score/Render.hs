@@ -104,7 +104,10 @@ renderScore (Score details signature ps) =
                                          L.Slash1 "Score",
                                          L.Slash1 "consists #(bars-per-line-engraver '(4))",
                                          L.Slash1 "omit BarNumber",
-                                         L.Override "GraceSpacing.spacing-increment" (L.toValue (0.0::Double)),
+                                         L.Override "GraceSpacing.spacing-increment" (L.toValue (0::Double)),
+                                         -- This should be used to give us bar lines at the start, however we
+                                         -- only end up with a dot:
+                                         L.Override "SystemStartBar.collapse-height" (L.toValue (1::Int)),
                                          L.Field "proportionalNotationDuration" (L.toLiteralValue "#(ly:make-moment 1/8)")
                                          ]
                    ]]
@@ -298,17 +301,19 @@ renderNoteHead n =
       embell = fmap (GraceMusic . f) (n^.noteHeadEmbellishment)
                 where f Flam = pure $ slashBlock "slashedGrace" [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
                       f Drag =
-                          -- L.Raw "\\newSpacingSection" :|
-                          pure $
-                            -- L.Override "Score.SpacingSpanner.spacing-increment" (L.toLiteralValue "#2"),
+                            pure $
+
+                            -- L.Override "Score.SpacingSpanner.base-shortest-duration" (L.toLiteralValue "(ly:make-moment 1/16)") :|
+                            -- [
                             slashBlock "grace" [
                               L.Revert "Beam.positions",
                               0.25 *^ L.note (L.NotePitch oppPitch Nothing),
                               0.25 *^ L.note (L.NotePitch oppPitch Nothing),
                               beamPositions
-                              ] --,
-                            -- L.Revert "Score.SpacingSpanner.spacing-increment"
-                          -- ]
+                              ]
+                        -- ,
+                            -- L.Revert "Score.SpacingSpanner.base-shortest-duration"
+                            -- ]
                       f Ruff = pure $
                         L.Slash1 "grace" ^+^
                          L.Sequential [
@@ -359,8 +364,8 @@ renderNoteHead n =
                    AccentBig -> pure (OtherMusic revertsForBigAccent)
       finalNote =
         startTie . endTie . addDynamics . addCresc . stopCresc $ thisHead
-  -- TODO Really. fromList.
-  in NE.fromList $ F.toList embell <> preMusic <> [NoteMusic finalNote] <> postMusic
+  -- TODO refactor fromList. might need some more NE methods (preppend and append foldables of a)
+  in maybe id cons embell $ NE.fromList $ preMusic <> [NoteMusic finalNote] <> postMusic
 
 mapDynamics :: Dynamics -> L.Dynamics
 mapDynamics p = case p of
