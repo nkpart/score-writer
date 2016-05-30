@@ -1,10 +1,11 @@
 module LilypondProcess where
 
-import System.Process
-import Data.Monoid ((<>))
-import System.Directory
-import System.IO.Temp
-import System.IO
+import           Data.Monoid      ((<>))
+import           System.Directory
+import           System.FilePath
+import           System.IO
+import           System.IO.Temp
+import           System.Process
 
 data Format = PNG | PDF | PS
 
@@ -25,6 +26,15 @@ prettyFormat :: Format -> String
 prettyFormat PNG = "png"
 prettyFormat PDF = "pdf"
 prettyFormat PS = "ps"
+
+
+formatForFile :: FilePath -> Maybe Format
+formatForFile fp =
+  case takeExtension fp of
+    ".pdf" -> Just PDF
+    ".png" -> Just PNG
+    ".ps" -> Just PS
+    _ -> Nothing
 
 test :: IO ()
 test =

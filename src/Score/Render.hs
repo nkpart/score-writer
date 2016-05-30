@@ -85,7 +85,7 @@ engraverPrefix =
 \\n"
 
 renderOrientation :: Orientation -> String
-renderOrientation o' = "#(set-default-paper-size \"a4\" '" <> o <> ")"
+renderOrientation o' = "#(set-default-paper-size \"a4" <> o <> "\")"
    where o =
            case o' of
              Portrait -> "portrait"
@@ -210,6 +210,7 @@ renderSignature sig@(Signature n m) =
                 -- TODO what does the 6 here even mean.
                 Signature 6 8 -> setMomentAndStructure 6 [3, 3]
                 Signature 9 8 -> setMomentAndStructure 6 [3, 3, 3]
+                Signature 12 8 -> setMomentAndStructure 6 [3, 3, 3, 3]
                 _ -> error "Unknown signature"
 
 renderManyBeameds :: [Beamed] -> State [NoteMod] [L.Music]

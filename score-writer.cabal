@@ -36,6 +36,7 @@ library
                      , transformers
                      , trifecta
                      , vector-space
+                     , filepath
                      , semigroupoids
                      , directory
   default-language:    Haskell2010

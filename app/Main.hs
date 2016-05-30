@@ -5,6 +5,7 @@ import           Control.Exception            hiding (catch)
 import           Control.Monad
 import           Control.Monad.Catch
 import           Language.Haskell.Interpreter
+import           LilypondProcess
 import           Options.Applicative
 import           Score
 import           Score.Types
@@ -30,7 +31,7 @@ cli =
                     orientation <*>
                     some (strOption (long "score-file")) <*>
                     strOption (long "output-file"))
-              (progDesc "Render a .score file to PDF")
+              (progDesc "Render a .score file")
              )
              ]
   where orientation =
@@ -45,7 +46,9 @@ execCli :: CLI -> IO ()
 execCli (Watch o file valueName) =
   watch o file valueName
 execCli (Render o inp outp) =
-  render PDF o inp outp
+  render (checkFormat (formatForFile outp)) o inp outp
+    where checkFormat (Just v) = v
+          checkFormat Nothing = error $ "Unsupported file format for output: " <> outp
 
 watch :: Orientation -> FilePath -> String -> IO ()
 watch o file valueName = do
