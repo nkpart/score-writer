@@ -103,6 +103,9 @@ drag = _NoteHead . noteHeadEmbellishment .~ Just Drag
 ruff :: AsNoteHead (->) Identity t => t -> t
 ruff = _NoteHead . noteHeadEmbellishment .~ Just Ruff
 
+ratamacue :: AsNoteHead (->) Identity t => t -> t
+ratamacue = _NoteHead . noteHeadEmbellishment .~ Just Ratamacue
+
 accent :: AsNoteHead (->) Identity t => t -> t
 accent = _NoteHead . noteHeadAccent .~ AccentRegular
 

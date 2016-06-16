@@ -214,6 +214,7 @@ noteMod =
   on 'f' P.flam <|>
   on 'd' P.drag <|>
   on 'r' P.ruff <|>
+  on 'u' P.ratamacue <|>
   on '[' (P.startUnison <>) <|>
   on ']' (<> P.stopUnison) <|>
   d "\\pppp\\" PPPP <|>

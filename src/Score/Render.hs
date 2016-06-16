@@ -309,6 +309,12 @@ renderNoteHead n =
                               0.25 *^ L.note (L.NotePitch oppPitch Nothing),
                               beamPositions
                               ]
+                      f Ratamacue =
+                            pure $
+                            slashBlock "grace" [
+                              0.25 *^ L.note (L.NotePitch oppPitch Nothing),
+                              0.25 *^ L.note (L.NotePitch oppPitch Nothing)
+                              ]
                       f Ruff = pure $
                         L.Slash1 "grace" ^+^
                          L.Sequential [

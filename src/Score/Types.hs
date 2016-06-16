@@ -35,6 +35,7 @@ data Embellishment
   = Flam
   | Drag
   | Ruff
+  | Ratamacue
   deriving (Eq, Show, Data, Typeable)
 
 data Unison =
