@@ -23,16 +23,6 @@ import Control.Lens.Internal.Indexed
 
 infixl 0 <->
 
--- | General purpose utils
-
-zap :: AsNoteHead (->) (BazaarT (->) Identity NoteHead NoteHead) t
-    => [NoteHead -> NoteHead] -> t -> t
-zap fs = partsOf _NoteHead %~ \vs -> zipWith (\v f -> f v) vs fs
-
-zapN :: AsNoteHead (->) (Indexing Identity) t
-     => Int -> (NoteHead -> NoteHead) -> t -> t
-zapN n f = elementOf _NoteHead n %~ f
-
 -- | Note constructors
 l1, l2, l4, l8, l16, l32, l64 :: Beamed
 l1 = ln 1
@@ -187,3 +177,13 @@ thenRepeat = writeF (partRepeat .~ Repeat)
 
 noRepeat :: PartM ()
 noRepeat = writeF (partRepeat .~ NoRepeat)
+
+-- | General purpose utils
+
+zap :: AsNoteHead (->) (BazaarT (->) Identity NoteHead NoteHead) t
+    => [NoteHead -> NoteHead] -> t -> t
+zap fs = partsOf _NoteHead %~ \vs -> zipWith (\v f -> f v) vs fs
+
+zapN :: AsNoteHead (->) (Indexing Identity) t
+     => Int -> (NoteHead -> NoteHead) -> t -> t
+zapN n f = elementOf _NoteHead n %~ f

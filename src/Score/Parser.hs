@@ -115,9 +115,9 @@ parsePart =
 
 anacrusis :: (MonadState ParseState m, DeltaParsing m) => m (Maybe Beamed)
 anacrusis =
-  do let anacrusisDelimeter = "/"
+     let anacrusisDelimeter = "/"
          anacrusisLine v = (tokenLine (parseBeamed v) <* symbol anacrusisDelimeter)
-     optional (try (optionalDynamics >>= anacrusisLine))
+      in optional (try (optionalDynamics >>= anacrusisLine))
 
 beamLines :: (MonadState ParseState f, DeltaParsing f) => f [Beamed]
 beamLines =
@@ -157,9 +157,9 @@ parseBeams modMap =
               pure (beams ++ beam2)
      go)
 
-barCheck :: (MonadParseState f) => [Beamed] -> f ()
+barCheck :: MonadParseState f => [Beamed] -> f ()
 barCheck bs =
-  do let Sum n = bs ^. traverse . _Duration . to Sum
+  do let Sum n = bs ^. _Duration . to Sum
      s <- use parseStateSignature
      unless (n == signatureDuration s) $
        fail $ "Bar duration doesn't line up with the signature:" ++ show n

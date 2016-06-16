@@ -34,7 +34,8 @@ data RenderedNote
              Int
              (NE.NonEmpty RenderedNote)
 
-_NoteMusic :: Traversal' RenderedNote L.Music
+-- | _NoteMusic :: Traversal' RenderedNote L.Music
+_NoteMusic :: (Applicative f,Functor f) => (L.Music -> f L.Music) -> RenderedNote -> f RenderedNote
 _NoteMusic f (NoteMusic c) = NoteMusic <$> f c
 _NoteMusic _ (GraceMusic c) = pure (GraceMusic c)
 _NoteMusic _ (OtherMusic c) = pure (OtherMusic c)
@@ -123,7 +124,7 @@ renderDetails ds = [
 
 renderPart :: Part -> State [NoteMod] L.Music
 renderPart p =
-  do anacrusis <- renderAnacrusis (view partAnacrusis p)
+  do anacrusis <- renderAnacrusis (p ^. partAnacrusis)
      beams <- renderManyBeameds (p ^.. partBeams . traverse)
      let thisPart = L.Sequential (anacrusis <> F.toList beams)
          r = fmap (L.Sequential . F.toList) . renderManyBeameds . F.toList
@@ -221,7 +222,7 @@ renderManyBeameds bs =
 
 resolveMods :: MonadState [NoteMod] m => Beamed -> m (NonEmpty Note)
 resolveMods (Beamed b) =
-            flip (traverse . _NoteHead) b $ \nh ->
+            forOf (traverse . _NoteHead) b $ \nh ->
                 do mods <- get
                    let v = applyMods mods nh
                    put (nh^.noteHeadMods)
@@ -237,11 +238,10 @@ addBeams :: Traversable t => t RenderedNote -> t RenderedNote
 addBeams rn =
   let numNotes = lengthOf visitNotes rn
       visitNotes = traverse . _NoteMusic
-  in
-  if numNotes > 1
-     then rn & taking 1 visitNotes %~ L.beginBeam
-             & dropping (numNotes - 1) visitNotes %~ L.endBeam
-     else rn
+  in if numNotes > 1
+        then rn & taking 1 visitNotes %~ L.beginBeam
+                & dropping (numNotes - 1) visitNotes %~ L.endBeam
+        else rn
 
 buildMusic :: NonEmpty RenderedNote -> NonEmpty L.Music
 buildMusic rns = rns >>= f
@@ -303,18 +303,12 @@ renderNoteHead n =
                 where f Flam = pure $ slashBlock "slashedGrace" [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
                       f Drag =
                             pure $
-
-                            -- L.Override "Score.SpacingSpanner.base-shortest-duration" (L.toLiteralValue "(ly:make-moment 1/16)") :|
-                            -- [
                             slashBlock "grace" [
                               L.Revert "Beam.positions",
                               0.25 *^ L.note (L.NotePitch oppPitch Nothing),
                               0.25 *^ L.note (L.NotePitch oppPitch Nothing),
                               beamPositions
                               ]
-                        -- ,
-                            -- L.Revert "Score.SpacingSpanner.base-shortest-duration"
-                            -- ]
                       f Ruff = pure $
                         L.Slash1 "grace" ^+^
                          L.Sequential [

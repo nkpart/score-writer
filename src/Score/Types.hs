@@ -1,12 +1,12 @@
-{-# LANGUAGE DeriveDataTypeable        #-}
 {-# LANGUAGE RankNTypes        #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE MultiParamTypeClasses     #-}
+{-# LANGUAGE TypeFamilies              #-}
+{-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE DeriveDataTypeable        #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE OverloadedLists           #-}
-{-# LANGUAGE TemplateHaskell           #-}
-{-# LANGUAGE TypeFamilies              #-}
 module Score.Types
        (
          module Score.Types
@@ -52,7 +52,7 @@ data NoteHead =
            ,_noteHeadEmbellishment :: Maybe Embellishment
            -- these should be applied to the note after this one
            ,_noteHeadMods :: [NoteMod]
-           ,_noteHeadDynamics :: Maybe Dynamics -- TODO use own type
+           ,_noteHeadDynamics :: Maybe Dynamics
            }
   deriving (Eq, Show, Data, Typeable)
 
@@ -149,7 +149,10 @@ class AsHand p f s where
 
 class AsDuration p f s where
   _Duration ::
-    Optic' p f s (Ratio Integer)
+    Optic' p f s Duration
+
+instance AsDuration p f Duration where
+  _Duration = id
 
 class AsNoteHead p f s where _NoteHead :: Optic' p f s NoteHead
 
@@ -180,9 +183,6 @@ instance (p ~ (->),Applicative f) => AsHand p f Note where
 instance (p ~ (->),Applicative f) => AsHand p f Beamed where
   _Hand f (Beamed n) = Beamed <$> (traverse . _Hand) f n -- <*> pure m
 
-instance AsDuration p f Duration where
-  _Duration = id
-
 instance (p ~ (->),Functor f) => AsDuration p f NoteHead where
   _Duration = noteHeadDuration
 
@@ -197,10 +197,13 @@ tupletise :: Ratio Integer -> Simple Iso (Ratio Integer) (Ratio Integer)
 tupletise x =
   let r = numerator x
       n = denominator x
-   in iso ((n%r) *) ((r%n) *)
+   in iso (n%r *) (r%n *)
 
 instance (p ~ (->),Applicative f) => AsDuration p f Beamed where
   _Duration f (Beamed n) = Beamed <$> (traverse . _Duration) f n
+
+instance (p ~ (->),Applicative f) => AsDuration p f [Beamed] where
+  _Duration = traverse . _Duration
 
 instance AsNoteHead p f NoteHead where
   _NoteHead = id
@@ -236,15 +239,11 @@ swapH :: Hand -> Hand
 swapH L = R
 swapH R = L
 
-_swapH :: Iso' Hand Hand
-_swapH = iso swapH swapH
-
 swapHands :: AsHand (->) Identity s
           => s -> s
 swapHands = _Hand %~ swapH
 
 applyMods :: [NoteMod] -> NoteHead -> NoteHead
-
 applyMods xs a =
   foldl' (\h EndRoll -> h & noteHeadSlurEnd .~ True) a xs
 

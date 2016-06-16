@@ -22,23 +22,27 @@ library
                        Score.Parser.QQ
                        LilypondProcess
   build-depends:       base >= 4.7 && < 5
-                     , ansi-wl-pprint
                      , containers
-                     , lens
-                     , lilypond
-                     , mtl
-                     , parsers
-                     , prettify
                      , process
-                     , semigroups
-                     , template-haskell
-                     , temporary
-                     , transformers
-                     , trifecta
-                     , vector-space
-                     , filepath
-                     , semigroupoids
                      , directory
+                     , filepath
+                     , temporary
+
+                     , lens
+                     , mtl
+                     , transformers
+                     , semigroups
+                     , semigroupoids
+
+                     , template-haskell
+
+                     , ansi-wl-pprint
+                     , prettify
+                     , lilypond
+                     , vector-space
+
+                     , parsers
+                     , trifecta
   default-language:    Haskell2010
   ghc-options: -O2 -Wall -Werror
 
