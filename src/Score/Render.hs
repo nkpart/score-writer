@@ -124,18 +124,29 @@ renderDetails ds = [
 
 renderPart :: Part -> State [NoteMod] L.Music
 renderPart p =
-  do anacrusis <- renderAnacrusis (p ^. partAnacrusis)
-     beams <- renderManyBeameds (p ^.. partBeams . traverse)
-     let thisPart = L.Sequential (anacrusis <> F.toList beams)
-         r = fmap (L.Sequential . F.toList) . renderManyBeameds . F.toList
+  do anacrusis <-
+       renderAnacrusis (p ^. partAnacrusis)
+     let mark =
+           [L.Set "Score.markFormatter" (L.toLiteralValue "#format-mark-box-numbers")
+           ,L.Raw "\\mark \\default"]
+     beams <-
+       renderManyBeameds (p ^.. partBeams . traverse)
+     let thisPart =
+           L.Sequential (anacrusis <> mark <> F.toList beams)
+         r =
+           fmap (L.Sequential . F.toList) .
+           renderManyBeameds .
+           F.toList
      case p ^. partRepeat of
        NoRepeat -> pure thisPart
-       Repeat -> pure $ L.Repeat False 2 thisPart Nothing
+       Repeat ->
+         pure (L.Repeat False 2 thisPart Nothing)
        Return firstTime secondTime ->
-         do -- we want to pass the same mods into the first and second time, I think
+         do
+            -- we want to pass the same mods into the first and second time, I think
             ft <- restoring (r firstTime)
             st <- r secondTime
-            pure $! L.Repeat False 2 thisPart (Just (ft, st))
+            pure (L.Repeat False 2 thisPart (Just (ft,st)))
 
 renderAnacrusis :: Maybe Beamed -> State [NoteMod] [L.Music]
 renderAnacrusis anacrusis =

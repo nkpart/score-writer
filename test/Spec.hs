@@ -5,7 +5,7 @@ import           Test.Tasty
 import           Test.Tasty.Golden
 import           Test.Tasty.HUnit
 
-import           BBCOCA            hiding (main)
+-- import           BBCOCA            hiding (main)
 import           LilypondProcess
 import           Score
 import qualified Score.Parser      as P
@@ -98,10 +98,10 @@ renderingTests =
             [testGroup "Full Rendering"
                        [testScoreFile "score-file Pipe Major Donald Maclean of Lewis"
                                       "pipe-major-donald-maclean-of-lewis.png"
-                                      "library/pm-donald-maclean-of-lewis.score"
+                                      "library/bbc-oca/pm-donald-maclean-of-lewis.score"
                        ,testScoreFile "score-file 79ths"
                                       "79ths.png"
-                                      "library/79ths.score"
+                                      "library/bbc-oca/msr/79ths.score"
                        ]
 
             ,testGroup "Signature setMomentAndStructure"
