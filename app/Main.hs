@@ -8,6 +8,7 @@ import           Language.Haskell.Interpreter
 import           LilypondProcess
 import           Options.Applicative
 import           Score
+import           Data.Time
 import           Score.Types
 import           System.Directory
 import           System.FilePath
@@ -17,6 +18,7 @@ import           System.Process
 data CLI
   = Watch Orientation FilePath String
   | Render Orientation [FilePath] String
+  | View Orientation FilePath
 
 cli :: Parser CLI
 cli =
@@ -33,6 +35,7 @@ cli =
                     strOption (long "output-file"))
               (progDesc "Render a .score file")
              )
+    ,command "view" (info (View <$> orientation <*> strOption (long "score-file")) (progDesc "View a .score file"))
              ]
   where orientation =
           flag' Portrait (long "portrait") <|>
@@ -49,6 +52,14 @@ execCli (Render o inp outp) =
   render (checkFormat (formatForFile outp)) o inp outp
     where checkFormat (Just v) = v
           checkFormat Nothing = error $ "Unsupported file format for output: " <> outp
+execCli (View o xx) =
+  do tmpDir <- getTemporaryDirectory
+     tmpFile <- (tmpDir </>) . (++".pdf") . formatTime defaultTimeLocale "%q" <$> getCurrentTime
+     render PDF o [xx] tmpFile
+     callCommand $ "open -n -W " <> tmpFile
+     x <- doesFileExist tmpFile
+     when x (removeFile tmpFile)
+
 
 watch :: Orientation -> FilePath -> String -> IO ()
 watch o file valueName = do

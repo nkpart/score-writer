@@ -291,9 +291,7 @@ tweaksForBigAccent =
 
 revertsForBigAccent :: NE.NonEmpty L.Music
 revertsForBigAccent =
-   L.Revert "Script.rotation" :|
-   L.Revert "Script.font-size" :
-   L.Revert "Script.staff-padding" : []
+   L.Revert "Script.rotation" :| L.Revert "Script.font-size" : L.Revert "Script.staff-padding" : []
 
 renderNoteHead :: NoteHead -> NE.NonEmpty RenderedNote
 renderNoteHead n =
