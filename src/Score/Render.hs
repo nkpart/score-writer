@@ -41,6 +41,17 @@ _NoteMusic _ (GraceMusic c) = pure (GraceMusic c)
 _NoteMusic _ (OtherMusic c) = pure (OtherMusic c)
 _NoteMusic f (Tupleted a b c) = Tupleted a b <$> (traverse . _NoteMusic) f c
 
+
+-- | State that needs to be managed while we render
+--   * note modifications are stored here, they are picked up on one note
+--     and apply to the next note
+--   * bar count. used to apply a line break after every 4
+data RenderState =
+  RenderState {_renderStateNoteMods :: [NoteMod]
+              ,_renderStateBarCount :: Int}
+  deriving (Eq, Show)
+makeLenses ''RenderState
+
 -- TODO:
 -- * prettier fonts - http://lilypond.1069038.n5.nabble.com/Change-font-of-titles-composer-etc-td25870.html
 -- * tweak note styles to look like this: http://drummingmad.com/what-are-unisons/
@@ -60,23 +71,6 @@ printScorePage o scores =
 engraverPrefix :: String
 engraverPrefix =
            "\
-\#(define ((bars-per-line-engraver bar-list) context) \n\
-\  (let* ((working-copy bar-list)\n\
-\         (total (1+ (car working-copy))))\n\
-\    `((acknowledgers\n\
-\       (paper-column-interface\n\
-\        . ,(lambda (engraver grob source-engraver)\n\
-\             (let ((internal-bar (ly:context-property context 'internalBarNumber)))\n\
-\               (if (and (pair? working-copy)\n\
-\                        (= (remainder internal-bar total) 0)\n\
-\                        (eq? #t (ly:grob-property grob 'non-musical)))\n\
-\                   (begin\n\
-\                     (set! (ly:grob-property grob 'line-break-permission) 'force)\n\
-\                     (if (null? (cdr working-copy))\n\
-\                         (set! working-copy bar-list)\n\
-\                         (begin\n\
-\                           (set! working-copy (cdr working-copy))))\n\
-\                           (set! total (+ total (car working-copy))))))))))))\n\
 \startGraceMusic = {\
 \  \\override NoteHead.font-size = -5\
 \}\
@@ -92,10 +86,11 @@ renderOrientation o' = "#(set-default-paper-size \"a4" <> o <> "\")"
              Portrait -> "portrait"
              Landscape -> "landscape"
 
+
 renderScore :: Score -> L.Music
 renderScore (Score details signature ps) =
   let content =
-        flip evalState [] $
+        flip evalState (RenderState [] 0) $
         do
            bs <- traverse renderPart ps
            pure $! beginScore signature (F.toList bs)
@@ -103,7 +98,6 @@ renderScore (Score details signature ps) =
                     L.Field "indent" (L.toLiteralValue "#0")
                    ,slashBlock "context" [
                                          L.Slash1 "Score",
-                                         L.Slash1 "consists #(bars-per-line-engraver '(4))",
                                          L.Slash1 "omit BarNumber",
                                          L.Override "GraceSpacing.spacing-increment" (L.toValue (0::Double)),
                                          -- This should be used to give us bar lines at the start, however we
@@ -127,14 +121,13 @@ mark =
   [L.Set "Score.markFormatter" (L.toLiteralValue "#format-mark-box-numbers")
   ,L.Raw "\\mark \\default"]
 
-renderPart :: Part -> State [NoteMod] L.Music
+renderPart :: Part -> State RenderState L.Music
 renderPart p =
-  do -- anacrusis <- renderAnacrusis (p ^. partAnacrusis)
-     let (anacrusis, rest) = case p ^. partBars of
+  do let (anacrusis, rest) = case p ^. partBars of
                                a@(PartialBar _):xs -> ([a], xs)
                                xs -> ([], xs)
-     ana <- fmap join . traverse renderBar $ anacrusis
-     beams <- fmap join . traverse renderBar $ rest
+     ana <- renderBars anacrusis
+     beams <- renderBars rest
      let thisPart =
            L.Sequential (ana <> mark <> F.toList beams)
          r =
@@ -152,11 +145,19 @@ renderPart p =
             st <- r secondTime
             pure (L.Repeat False 2 thisPart (Just (ft,st)))
 
-renderBar :: Bar -> State [NoteMod] [L.Music]
-renderBar (PartialBar b) = renderAnacrusis b
-renderBar (Bar bs) = renderManyBeameds bs
+renderBars :: [Bar] -> State RenderState [L.Music]
+renderBars = fmap join . traverse renderBar
 
-renderAnacrusis :: Beamed -> State [NoteMod] [L.Music]
+renderBar :: Bar -> State RenderState [L.Music]
+renderBar (PartialBar b) = renderAnacrusis b <&> (<> [L.Raw "|", L.Slash1 "noBreak"])
+renderBar (Bar bs) =
+  do v <- renderManyBeameds bs
+     newCount <- renderStateBarCount <+= 1
+     return $ if newCount `mod` 4 == 0
+                then v <> [L.Raw "|", L.Slash1 "break"]
+                else v <> [L.Raw "|", L.Slash1 "noBreak"]
+
+renderAnacrusis :: Beamed -> State RenderState [L.Music]
 renderAnacrusis a =
          do let duration = sumOf _Duration a
             bs <- renderManyBeameds (pure a)
@@ -230,18 +231,18 @@ renderSignature sig@(Signature n m) =
                 Signature 12 8 -> setMomentAndStructure 6 [3, 3, 3, 3]
                 _ -> error "Unknown signature"
 
-renderManyBeameds :: [Beamed] -> State [NoteMod] [L.Music]
+renderManyBeameds :: [Beamed] -> State RenderState [L.Music]
 renderManyBeameds bs =
   (join . fmap F.toList) <$> traverse f bs
   where f b = do notes <- resolveMods b
                  return $! renderBeamed notes
 
-resolveMods :: MonadState [NoteMod] m => Beamed -> m (NonEmpty Note)
+resolveMods :: MonadState RenderState f => Beamed -> f (NonEmpty Note)
 resolveMods (Beamed b) =
             forOf (traverse . _NoteHead) b $ \nh ->
-                do mods <- get
+                do mods <- use renderStateNoteMods
                    let v = applyMods mods nh
-                   put (nh^.noteHeadMods)
+                   renderStateNoteMods .= (nh^.noteHeadMods)
                    return (v & noteHeadMods .~ [])
 
 renderBeamed :: NonEmpty Note -> NonEmpty L.Music
@@ -420,3 +421,4 @@ restoring ma =
       v <- ma
       put s
       return v
+
