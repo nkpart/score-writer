@@ -109,5 +109,5 @@ printError = print
 
 viewScore :: Orientation -> [Score] -> IO ()
 viewScore orientation score =
-  do writeScorePage orientation PDF "wizzle" score
+  do writeScorePage orientation PDF "wizzle.pdf" score
      callCommand "open -a Safari -g wizzle.pdf"

@@ -14,7 +14,7 @@ import Score.Types as X
 import Control.Lens as X hiding (para)
 import Data.Semigroup as X
 import Data.Ratio
-import Control.Monad.Writer hiding ((<>))
+import Control.Monad.State
 import Control.Lens.Internal.Bazaar
 import Control.Lens.Internal.Indexed
 
@@ -76,6 +76,9 @@ thisUnison x = startUnison <-> x <-> stopUnison
 
 aNote :: Hand -> Ratio Integer -> Note
 aNote h d = Note $ NoteHead h NoAccent False d False False Nothing False Nothing [] Nothing
+
+beam :: Note -> Beamed
+beam = Beamed . pure
 
 -- | Note modifiers
 
@@ -149,27 +152,29 @@ dotCut = zap (cycle [dot, cut])
 
 -- | DSL
 
-type PartM a = Writer (Endo Part) a
+-- TODO State because then the reverse appending in bars/upbeat makes sense
+type PartM a = State Part a
 
 writeF :: (Part -> Part) -> PartM ()
-writeF f = tell $ Endo f
+writeF = modify
 
 buildPart :: PartM a -> Part
-buildPart ma = appEndo (execWriter ma) (Part Nothing mempty NoRepeat)
+buildPart ma = execState ma (Part mempty NoRepeat)
 
+-- | TODO this always prefixes the bar
 upbeat :: Beamed -> PartM ()
-upbeat v = writeF (partAnacrusis .~ Just v)
+upbeat v = writeF (partBars %~ (\x -> x <> [PartialBar v]))
 
-bars :: [Beamed] -> PartM ()
-bars bs = writeF (partBeams %~ (\x -> bs <> x))
+bar :: [Beamed] -> PartM ()
+bar bs = writeF (partBars %~ (\x -> x <> [Bar bs]))
 
-firstTime :: [Beamed] -> PartM ()
+firstTime :: [Bar] -> PartM ()
 firstTime x = writeF (partRepeat %~ f)
   where f NoRepeat = Return x mempty
         f Repeat = Return x mempty
         f (Return p q) = Return (p <> x) q
 
-secondTime :: [Beamed] -> PartM ()
+secondTime :: [Bar] -> PartM ()
 secondTime x = writeF (partRepeat %~ f)
   where f NoRepeat = Return mempty x
         f Repeat = Return mempty x

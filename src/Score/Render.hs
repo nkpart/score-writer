@@ -122,20 +122,24 @@ renderDetails ds = [
   , L.Field "piece"  $ L.toValue (ds ^. detailsGenre)
   ] <> maybe [] (pure . L.Field "opus" . L.toValue) (ds ^. detailsBand)
 
+mark :: [L.Music]
+mark =
+  [L.Set "Score.markFormatter" (L.toLiteralValue "#format-mark-box-numbers")
+  ,L.Raw "\\mark \\default"]
+
 renderPart :: Part -> State [NoteMod] L.Music
 renderPart p =
-  do anacrusis <-
-       renderAnacrusis (p ^. partAnacrusis)
-     let mark =
-           [L.Set "Score.markFormatter" (L.toLiteralValue "#format-mark-box-numbers")
-           ,L.Raw "\\mark \\default"]
-     beams <-
-       renderManyBeameds (p ^.. partBeams . traverse)
+  do -- anacrusis <- renderAnacrusis (p ^. partAnacrusis)
+     let (anacrusis, rest) = case p ^. partBars of
+                               a@(PartialBar _):xs -> ([a], xs)
+                               xs -> ([], xs)
+     ana <- fmap join . traverse renderBar $ anacrusis
+     beams <- fmap join . traverse renderBar $ rest
      let thisPart =
-           L.Sequential (anacrusis <> mark <> F.toList beams)
+           L.Sequential (ana <> mark <> F.toList beams)
          r =
-           fmap (L.Sequential . F.toList) .
-           renderManyBeameds .
+           fmap (L.Sequential . F.toList . join) .
+           traverse renderBar .
            F.toList
      case p ^. partRepeat of
        NoRepeat -> pure thisPart
@@ -148,11 +152,12 @@ renderPart p =
             st <- r secondTime
             pure (L.Repeat False 2 thisPart (Just (ft,st)))
 
-renderAnacrusis :: Maybe Beamed -> State [NoteMod] [L.Music]
-renderAnacrusis anacrusis =
-     case anacrusis of
-       Nothing -> pure []
-       Just a ->
+renderBar :: Bar -> State [NoteMod] [L.Music]
+renderBar (PartialBar b) = renderAnacrusis b
+renderBar (Bar bs) = renderManyBeameds bs
+
+renderAnacrusis :: Beamed -> State [NoteMod] [L.Music]
+renderAnacrusis a =
          do let duration = sumOf _Duration a
             bs <- renderManyBeameds (pure a)
             pure [ L.Partial (round $ 1/duration) (L.Sequential $ F.toList bs) ]

@@ -1,5 +1,3 @@
-{-# LANGUAGE OverloadedLists #-}
-
 import           Test.HUnit ((~?))
 import           Test.Tasty
 import           Test.Tasty.Golden
@@ -50,43 +48,43 @@ parserTests =
                     ,("{8L R L}", triplet (l8 <-> r8 <-> l8))
                     ]
 
-                  barExamples :: [(String, [Beamed])]
+                  barExamples :: [(String, [Bar])]
                   barExamples =
                     -- These tests are subject to the bar checker, default 4/4
-                    [("R, L , R,L", [r4, l4, r4, l4])
-                    ,("R, L, R, L | L, R,L,R", [r4, l4, r4, l4, l4, r4, l4, r4])
-                    ,("{4L R L R L R}", [ triplet (l4 <-> r4 <-> l4 <-> r4 <-> l4 <-> r4)])
+                    [("R, L , R,L", pure $ Bar [r4, l4, r4, l4])
+                    ,("R, L, R, L | L, R,L,R", [Bar [r4, l4, r4, l4], Bar [l4, r4, l4, r4]])
+                    ,("{4L R L R L R}", pure $ Bar [ triplet (l4 <-> r4 <-> l4 <-> r4 <-> l4 <-> r4)])
                     ]
 
                   partExamples =
-                    let rlrl = bars [r4, l4, r4, l4]
+                    let rlrl = bar [r4, l4, r4, l4]
                     in
                     [("R, L, R, L", buildPart rlrl)
                     ,(" R, L, R, L", buildPart rlrl)
                     ,("R, L, R, L\nR, L, R, L\nR, L, R, L", buildPart (rlrl >> rlrl >> rlrl))
-                    ,("L /\nR, L, R, L", buildPart (upbeat l4 >> rlrl))
+                    ,("/ L\nR, L, R, L", buildPart (upbeat l4 >> rlrl))
                     -- TODO: this doesn't parse, but not sure it needs to or should
                     -- ,("R, L, R, L\n:1\nR, L, R, L", buildPart (rlrl >> firstTime [r4, l4, r4, l4]))
-                    ,("R, L, R, L\n:2\nR, L, R, L", buildPart (rlrl >> secondTime [r4, l4, r4, l4]))
-                    ,("R,L,R,L\n:1\nR,L,R,L\n:2\nR,L,R,L", buildPart (rlrl >> firstTime [r4,l4,r4,l4] >> secondTime [r4,l4,r4,l4]))
+                    ,("R, L, R, L\n:2\nR, L, R, L", buildPart (rlrl >> secondTime [Bar [r4, l4, r4, l4]]))
+                    ,("R,L,R,L\n:1\nR,L,R,L\n:2\nR,L,R,L", buildPart (rlrl >> firstTime [Bar [r4,l4,r4,l4]] >> secondTime [Bar [r4,l4,r4,l4]]))
                     ,("R, L, R, L\n:|", buildPart (rlrl >> thenRepeat))
                     -- Accent/Dynamics lines
                     ,(unlines ["* ^ "
                               ,"  R, L, R, L"],
-                       buildPart (bars [accent r4, l4, r4, l4]))
+                       buildPart (bar [accent r4, l4, r4, l4]))
                     ]
 
                   scoreExamples :: [(String, Score)]
                   scoreExamples =
                     [
                       ("===\n1L"
-                     ,Score blankDetails (Signature 4 4) [buildPart (bars [l1])])
+                     ,Score blankDetails (Signature 4 4) [buildPart (bar [l1])])
                     , ("signature 2/4\n===\n2L"
-                     ,Score blankDetails (Signature 2 4) [buildPart (bars [l2])])
+                     ,Score blankDetails (Signature 2 4) [buildPart (bar [l2])])
                     , ("signature 6/8\n===\n4L, L, L\n---R, R, R"
-                     ,Score blankDetails (Signature 6 8) [buildPart (bars [l4,l4,l4]), buildPart (bars [r4,r4,r4])])
+                     ,Score blankDetails (Signature 6 8) [buildPart (bar [l4,l4,l4]), buildPart (bar [r4,r4,r4])])
                     , ("title \"Mrs Mac\"\nstyle \"Reel\"\ncomposer \"NP\"\nband \"OCA\"\n===\n1L\n---1R"
-                     ,Score (Details "Mrs Mac" "Reel" "NP" (Just "OCA")) (Signature 4 4) [buildPart (bars [l1]), buildPart (bars [r1])])
+                     ,Score (Details "Mrs Mac" "Reel" "NP" (Just "OCA")) (Signature 4 4) [buildPart (bar [l1]), buildPart (bar [r1])])
                     ]
 
                   testParser p (input, expected) =
@@ -111,15 +109,15 @@ renderingTests =
                                   [singleParted
                                      "2/4"
                                      (Signature 2 4)
-                                     (bars [singles 4 r16,singles 8 r32])
+                                     (bar [singles 4 r16,singles 8 r32])
                                   ,singleParted
                                      "6/8 Jig"
                                      (Signature 6 8)
-                                     (bars [singles 4 r16 <-> r8, l8 <-> singles 4 r16, singles 6 r16, r8<->l8<->r8])
+                                     (bar [singles 4 r16 <-> r8, l8 <-> singles 4 r16, singles 6 r16, r8<->l8<->r8])
                                   ,singleParted
                                      "Strathspey 4/4"
                                      (Signature 4 4)
-                                     (bars [triplet (singles 4 r16 <-> r8), triplet ( l8 <-> singles 4 r16 ), triplet (singles 6 r16), triplet (r8<->l8<->r8)])
+                                     (bar [triplet (singles 4 r16 <-> r8), triplet ( l8 <-> singles 4 r16 ), triplet (singles 6 r16), triplet (r8<->l8<->r8)])
                                   ]
                        ]]
 

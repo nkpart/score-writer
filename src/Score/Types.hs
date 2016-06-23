@@ -69,42 +69,34 @@ data Note = Note NoteHead
 data NoteMod = EndRoll deriving (Eq, Show, Data, Typeable)
 
 data Dynamics
-  = PPPPP
-  | PPPP
-  | PPP
-  | PP
-  | P
-  | MP
-  | MF
-  | F
-  | FF
-  | FFF
-  | FFFF
-  | SF
-  | SFF
-  | SP
-  | SPP
-  | SFZ
-  | RFZ
+  = PPPPP | PPPP | PPP | PP | P
+  | MP | MF
+  | F | FF | FFF | FFFF
+  | SF | SFF
+  | SP | SPP
+  | SFZ | RFZ
   deriving (Eq,Show,Data,Typeable,Enum)
 
 newtype Beamed =
   Beamed { _beamedNotes :: NonEmpty Note }
   deriving (Eq, Show, Data, Typeable)
 
-beam :: Note -> Beamed
-beam = Beamed . pure
+
+data Bar =
+    Bar [Beamed]
+  | PartialBar Beamed
+  -- TODO | RepeatBar
+  deriving (Eq, Show, Data, Typeable)
 
 data Part =
-  Part {_partAnacrusis :: Maybe Beamed
-       ,_partBeams :: [Beamed]
+  Part {_partBars :: [Bar]
        ,_partRepeat :: Repeat}
   deriving (Eq,Show)
 
 data Repeat
   = NoRepeat
   | Repeat
-  | Return [Beamed] [Beamed]
+  | Return [Bar] [Bar]
   deriving (Eq,Show)
 
 data Signature = Signature Integer Integer deriving (Eq, Show)
@@ -137,6 +129,7 @@ makePrisms ''Note
 makeLenses ''Beamed
 makeLenses ''Part
 makePrisms ''Repeat
+makePrisms ''Bar
 makeLenses ''Details
 makeLenses ''Score
 
@@ -206,6 +199,10 @@ instance (p ~ (->),Applicative f) => AsDuration p f Beamed where
 instance (p ~ (->),Applicative f) => AsDuration p f [Beamed] where
   _Duration = traverse . _Duration
 
+instance (Applicative f) => AsDuration (->) f Bar where
+  _Duration f (Bar bs) = Bar <$> _Duration f bs
+  _Duration f (PartialBar bs) = PartialBar <$> _Duration f bs
+
 instance AsNoteHead p f NoteHead where
   _NoteHead = id
 
@@ -221,9 +218,13 @@ instance (Applicative f) => AsNoteHead (->) f Beamed where
 instance (Applicative f) => AsNoteHead (->) f [Beamed] where
   _NoteHead = traverse . _NoteHead
 
+instance (Applicative f) => AsNoteHead (->) f Bar where
+  _NoteHead f (Bar bar) = Bar <$> _NoteHead f bar
+  _NoteHead f (PartialBar bar) = PartialBar <$> _NoteHead f bar
+
 instance (Applicative f) => AsNoteHead (->) f Part where
   -- TODO should this touch the anacrusis?
-  _NoteHead f (Part ana ph rep) = Part <$> (traverse . _NoteHead) f ana <*> (traverse . _NoteHead) f ph <*> pure rep
+  _NoteHead f (Part bars rep) = Part <$> (traverse . _NoteHead) f bars <*> pure rep
 
 instance (Applicative f) => AsNoteHead (->) f Score where
   _NoteHead f (Score d sig s) = Score d sig <$> (traverse . _NoteHead) f s

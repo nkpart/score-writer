@@ -15,6 +15,7 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Score
+                       Score.Editor
                        Score.Types
                        Score.Render
                        Score.Prelude
@@ -44,6 +45,7 @@ library
 
                      , parsers
                      , trifecta
+                     , zippers
   default-language:    Haskell2010
   ghc-options: -O2 -Wall -Werror
 

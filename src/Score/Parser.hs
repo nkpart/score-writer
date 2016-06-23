@@ -43,7 +43,7 @@ defaultParseBeam :: Parser Beamed
 defaultParseBeam = evalStateT (parseBeamed M.empty) initParseState
 
 -- | A parser of many beams. The default duration for a note is a quarter.
-defaultParseBeams :: Parser [Beamed]
+defaultParseBeams :: Parser [Bar]
 defaultParseBeams = evalStateT (parseBeams M.empty) initParseState
 
 -- | A parser of part - optional upbeat, beams, and repeat instructions
@@ -111,15 +111,15 @@ parsePart =
                   (flip Return [] <$> ft) <|>
                   (Return [] <$> st) <|>
                   (try (symbol repeatSymbol) $> Repeat)
-       pure $! Part ana beams (fromMaybe NoRepeat rep)
+       pure $! Part ((maybe [] (pure . PartialBar) ana) <> beams) (fromMaybe NoRepeat rep)
 
 anacrusis :: (MonadState ParseState m, DeltaParsing m) => m (Maybe Beamed)
 anacrusis =
-     let anacrusisDelimeter = "/"
-         anacrusisLine v = (tokenLine (parseBeamed v) <* symbol anacrusisDelimeter)
+     let anacrusisDelimeter = symbol "/"
+         anacrusisLine v = anacrusisDelimeter *> tokenLine (parseBeamed v)
       in optional (try (optionalDynamics >>= anacrusisLine))
 
-beamLines :: (MonadState ParseState f, DeltaParsing f) => f [Beamed]
+beamLines :: (MonadState ParseState f, DeltaParsing f) => f [Bar]
 beamLines =
   foldSome (optionalDynamics >>= parseBeams)
 
@@ -141,7 +141,7 @@ dynamics = token
               m <- fold <$> some noteMod
               pure $! M.singleton c m
 
-parseBeams :: (DeltaParsing f, MonadParseState f, TokenParsing f) => X -> f [Beamed]
+parseBeams :: (DeltaParsing f, MonadParseState f, TokenParsing f) => X -> f [Bar]
 parseBeams modMap =
   -- we want to treat newlines as the end of a set of beams
   -- so we run unUnlined
@@ -149,15 +149,13 @@ parseBeams modMap =
   token .
   T.runUnlined $ (
   do let go =
-           do beams <-
-                sepBy1 (parseBeamed modMap) (symbol ",")
-              beam2 <-
-                (symbol "|" *> barCheck beams *> go) <|>
+           do beams <- Bar <$> sepBy1 (parseBeamed modMap) (symbol ",")
+              beam2 <- (symbol "|" *> barCheck beams *> go) <|>
                 ((T.newline $> () <|> T.eof) *> barCheck beams $> [])
-              pure (beams ++ beam2)
+              pure (beams : beam2)
      go)
 
-barCheck :: MonadParseState f => [Beamed] -> f ()
+barCheck :: MonadParseState f => Bar -> f ()
 barCheck bs =
   do let Sum n = bs ^. _Duration . to Sum
      s <- use parseStateSignature
@@ -257,7 +255,7 @@ tokenLine = token . T.runUnlined
 on :: CharParsing f => Char -> b -> f b
 on ch f = char ch $> f
 
-runBarParser :: String -> Either String [Beamed]
+runBarParser :: String -> Either String [Bar]
 runBarParser = runParser (defaultParseBeams <* eof)
 
 runBeamParser :: String -> Either String Beamed
