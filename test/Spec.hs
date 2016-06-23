@@ -59,32 +59,32 @@ parserTests =
                   partExamples =
                     let rlrl = bar [r4, l4, r4, l4]
                     in
-                    [("R, L, R, L", buildPart rlrl)
-                    ,(" R, L, R, L", buildPart rlrl)
-                    ,("R, L, R, L\nR, L, R, L\nR, L, R, L", buildPart (rlrl >> rlrl >> rlrl))
-                    ,("/ L\nR, L, R, L", buildPart (upbeat l4 >> rlrl))
+                    [("R, L, R, L", part & rlrl)
+                    ,(" R, L, R, L", part & rlrl)
+                    ,("R, L, R, L\nR, L, R, L\nR, L, R, L", part & rlrl & rlrl & rlrl)
+                    ,("/ L\nR, L, R, L", part & upbeat l4 & rlrl)
                     -- TODO: this doesn't parse, but not sure it needs to or should
                     -- ,("R, L, R, L\n:1\nR, L, R, L", buildPart (rlrl >> firstTime [r4, l4, r4, l4]))
-                    ,("R, L, R, L\n:2\nR, L, R, L", buildPart (rlrl >> secondTime [Bar [r4, l4, r4, l4]]))
-                    ,("R,L,R,L\n:1\nR,L,R,L\n:2\nR,L,R,L", buildPart (rlrl >> firstTime [Bar [r4,l4,r4,l4]] >> secondTime [Bar [r4,l4,r4,l4]]))
-                    ,("R, L, R, L\n:|", buildPart (rlrl >> thenRepeat))
+                    ,("R, L, R, L\n:2\nR, L, R, L", part & rlrl & secondTime [Bar [r4, l4, r4, l4]])
+                    ,("R,L,R,L\n:1\nR,L,R,L\n:2\nR,L,R,L", part & rlrl & firstTime [Bar [r4,l4,r4,l4]] & secondTime [Bar [r4,l4,r4,l4]])
+                    ,("R, L, R, L\n:|", part & rlrl & thenRepeat)
                     -- Accent/Dynamics lines
                     ,(unlines ["* ^ "
                               ,"  R, L, R, L"],
-                       buildPart (bar [accent r4, l4, r4, l4]))
+                       part & bar [accent r4, l4, r4, l4])
                     ]
 
                   scoreExamples :: [(String, Score)]
                   scoreExamples =
                     [
                       ("===\n1L"
-                     ,Score blankDetails (Signature 4 4) [buildPart (bar [l1])])
+                     ,Score blankDetails (Signature 4 4) [part & (bar [l1])])
                     , ("signature 2/4\n===\n2L"
-                     ,Score blankDetails (Signature 2 4) [buildPart (bar [l2])])
+                     ,Score blankDetails (Signature 2 4) [part & (bar [l2])])
                     , ("signature 6/8\n===\n4L, L, L\n---R, R, R"
-                     ,Score blankDetails (Signature 6 8) [buildPart (bar [l4,l4,l4]), buildPart (bar [r4,r4,r4])])
+                     ,Score blankDetails (Signature 6 8) [part & (bar [l4,l4,l4]), part & (bar [r4,r4,r4])])
                     , ("title \"Mrs Mac\"\nstyle \"Reel\"\ncomposer \"NP\"\nband \"OCA\"\n===\n1L\n---1R"
-                     ,Score (Details "Mrs Mac" "Reel" "NP" (Just "OCA")) (Signature 4 4) [buildPart (bar [l1]), buildPart (bar [r1])])
+                     ,Score (Details "Mrs Mac" "Reel" "NP" (Just "OCA")) (Signature 4 4) [part & (bar [l1]), part & (bar [r1])])
                     ]
 
                   testParser p (input, expected) =
@@ -136,5 +136,5 @@ testScoreFile name expected file =
         shortOutput = outputFile
         fullExpected = "test/expected" </> expected
 
-singleParted name sig part =
-  Score (Details name "" "" Nothing) sig [buildPart part]
+singleParted name sig p =
+  Score (Details name "" "" Nothing) sig [part & p]

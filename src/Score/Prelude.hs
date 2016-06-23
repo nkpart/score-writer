@@ -14,7 +14,6 @@ import Score.Types as X
 import Control.Lens as X hiding (para)
 import Data.Semigroup as X
 import Data.Ratio
-import Control.Monad.State
 import Control.Lens.Internal.Bazaar
 import Control.Lens.Internal.Indexed
 
@@ -152,39 +151,32 @@ dotCut = zap (cycle [dot, cut])
 
 -- | DSL
 
--- TODO State because then the reverse appending in bars/upbeat makes sense
-type PartM a = State Part a
+part :: Part
+part = Part mempty NoRepeat
 
-writeF :: (Part -> Part) -> PartM ()
-writeF = modify
+upbeat :: Beamed -> Part -> Part
+upbeat v = partBars %~ (\x -> x <> [PartialBar v])
 
-buildPart :: PartM a -> Part
-buildPart ma = execState ma (Part mempty NoRepeat)
+bar :: [Beamed] -> Part -> Part
+bar bs = partBars %~ (\x -> x <> [Bar bs])
 
--- | TODO this always prefixes the bar
-upbeat :: Beamed -> PartM ()
-upbeat v = writeF (partBars %~ (\x -> x <> [PartialBar v]))
-
-bar :: [Beamed] -> PartM ()
-bar bs = writeF (partBars %~ (\x -> x <> [Bar bs]))
-
-firstTime :: [Bar] -> PartM ()
-firstTime x = writeF (partRepeat %~ f)
+firstTime :: [Bar] -> Part -> Part
+firstTime x = partRepeat %~ f
   where f NoRepeat = Return x mempty
         f Repeat = Return x mempty
         f (Return p q) = Return (p <> x) q
 
-secondTime :: [Bar] -> PartM ()
-secondTime x = writeF (partRepeat %~ f)
+secondTime :: [Bar] -> Part -> Part
+secondTime x = partRepeat %~ f
   where f NoRepeat = Return mempty x
         f Repeat = Return mempty x
         f (Return p q) = Return p (q <> x)
 
-thenRepeat :: PartM ()
-thenRepeat = writeF (partRepeat .~ Repeat)
+thenRepeat :: Part -> Part
+thenRepeat = partRepeat .~ Repeat
 
-noRepeat :: PartM ()
-noRepeat = writeF (partRepeat .~ NoRepeat)
+noRepeat :: Part -> Part
+noRepeat = partRepeat .~ NoRepeat
 
 -- | General purpose utils
 

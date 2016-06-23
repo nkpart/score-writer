@@ -29,10 +29,19 @@ import           Text.Trifecta                as T
 import           Text.Trifecta.Delta
 
 
+-- | Things that can change as we do the parsing
+--    * note duration is set optionally before each note head, it carries forward
+--    * Signature should be able to be changed as we go, used to do bar checks
+--    * Current set of note mods written in dynamics lines above note lines
 data ParseState = ParseState {
   _parseStateNoteDuration :: Integer,
-  _parseStateSignature :: Signature
-  } deriving (Eq, Show)
+  _parseStateSignature :: Signature,
+  _parseStateNoteMods :: X
+  }
+
+type Mod = Endo Beamed
+
+type X = M.Map Int64 Mod
 
 makeLenses ''ParseState
 
@@ -40,11 +49,11 @@ makeLenses ''ParseState
 ---------------------------
 
 defaultParseBeam :: Parser Beamed
-defaultParseBeam = evalStateT (parseBeamed M.empty) initParseState
+defaultParseBeam = evalStateT parseBeamed initParseState
 
 -- | A parser of many beams. The default duration for a note is a quarter.
 defaultParseBeams :: Parser [Bar]
-defaultParseBeams = evalStateT (parseBeams M.empty) initParseState
+defaultParseBeams = evalStateT parseBars initParseState
 
 -- | A parser of part - optional upbeat, beams, and repeat instructions
 defaultParsePart :: Parser Part
@@ -55,7 +64,7 @@ defaultParseScore = evalStateT (parseScore defaultSignature) initParseState
  where defaultSignature = _parseStateSignature initParseState
 
 initParseState :: ParseState
-initParseState = ParseState 4 (Signature 4 4)
+initParseState = ParseState 4 (Signature 4 4) mempty
 
 type MonadParseState = MonadState ParseState
 
@@ -99,13 +108,13 @@ parsePart =
     do -- Upbeat (overlaps regular beams)
        ana <- anacrusis
        -- Regular beams (overlaps firsttime/secondtime markers)
-       beams <- beamLines
+       beams <- barsOfLines
        -- First time
        rep <- let firstTimeMarker = ":1"
                   secondTimeMarker = ":2"
                   repeatSymbol = ":|"
-                  ft = try (symbol firstTimeMarker) *> beamLines
-                  st = try (symbol secondTimeMarker) *> beamLines
+                  ft = try (symbol firstTimeMarker) *> barsOfLines
+                  st = try (symbol secondTimeMarker) *> barsOfLines
                in optional $
                   (Return <$> ft <*> st) <|>
                   (flip Return [] <$> ft) <|>
@@ -116,20 +125,17 @@ parsePart =
 anacrusis :: (MonadState ParseState m, DeltaParsing m) => m (Maybe Beamed)
 anacrusis =
      let anacrusisDelimeter = symbol "/"
-         anacrusisLine v = anacrusisDelimeter *> tokenLine (parseBeamed v)
-      in optional (try (optionalDynamics >>= anacrusisLine))
+         anacrusisLine = anacrusisDelimeter *> tokenLine parseBeamed
+      in optional (try (optionalDynamics >> anacrusisLine))
 
-beamLines :: (MonadState ParseState f, DeltaParsing f) => f [Bar]
-beamLines =
-  foldSome (optionalDynamics >>= parseBeams)
+barsOfLines :: (MonadState ParseState f, DeltaParsing f) => f [Bar]
+barsOfLines =
+  foldSome (optionalDynamics >> parseBars)
 
-type Mod = Endo Beamed
-
-type X = M.Map Int64 Mod
-
-optionalDynamics :: DeltaParsing p => p (M.Map Int64 Mod)
+optionalDynamics :: (MonadState ParseState f, DeltaParsing f) => f ()
 optionalDynamics =
-  fromMaybe M.empty <$> optional dynamicsLine
+  do v <- fromMaybe M.empty <$> optional dynamicsLine
+     parseStateNoteMods .= v
 
 dynamicsLine :: DeltaParsing p => p (M.Map Int64 Mod)
 dynamicsLine = token $ runUnlined (symbol "*" *> (fold <$> many dynamics))
@@ -141,19 +147,22 @@ dynamics = token
               m <- fold <$> some noteMod
               pure $! M.singleton c m
 
-parseBeams :: (DeltaParsing f, MonadParseState f, TokenParsing f) => X -> f [Bar]
-parseBeams modMap =
+parseBars :: (DeltaParsing f, MonadParseState f, TokenParsing f) => f [Bar]
+parseBars =
   -- we want to treat newlines as the end of a set of beams
   -- so we run unUnlined
   -- but after that we want to consume the newline, so we token up
   token .
   T.runUnlined $ (
   do let go =
-           do beams <- Bar <$> sepBy1 (parseBeamed modMap) (symbol ",")
+           do beams <- Bar <$> sepBy1 parseBeamed (symbol ",")
               beam2 <- (symbol "|" *> barCheck beams *> go) <|>
-                ((T.newline $> () <|> T.eof) *> barCheck beams $> [])
+                (eofOrLine *> barCheck beams $> [])
               pure (beams : beam2)
      go)
+
+eofOrLine :: CharParsing f => f ()
+eofOrLine = T.newline $> () <|> T.eof
 
 barCheck :: MonadParseState f => Bar -> f ()
 barCheck bs =
@@ -162,20 +171,21 @@ barCheck bs =
      unless (n == signatureDuration s) $
        fail $ "Bar duration doesn't line up with the signature:" ++ show n
 
-parseBeamed :: (DeltaParsing f, MonadParseState f, TokenParsing f) => X -> f Beamed
-parseBeamed x =
-  foldSome (optional someSpace *> (note x <|> triplet x <|> startUnison <|> endUnison))
+parseBeamed :: (DeltaParsing f, MonadParseState f, TokenParsing f) => f Beamed
+parseBeamed =
+  foldSome (optional someSpace *> (note <|> triplet <|> startUnison <|> endUnison))
 
 duration :: (MonadParseState f, TokenParsing f) => f ()
 duration =
   assign parseStateNoteDuration =<< natural <?> "duration"
 
 -- | Rf~
-note :: (DeltaParsing m, MonadParseState m, TokenParsing m) => X -> m Beamed
-note x = token $
+note :: (DeltaParsing m, MonadParseState m, TokenParsing m) => m Beamed
+note = token $
        do c <- column <$> position
           skipOptional duration
           thisDuration <- use parseStateNoteDuration
+          x <- use parseStateNoteMods
           let noteheadP =
                 do h <- noteHand
                    mods <- fold <$> many noteMod
@@ -191,14 +201,14 @@ lookupMods x c =
   in fromMaybe mempty moreMods
 
 -- | { beam }
-triplet :: (DeltaParsing f, MonadParseState f, TokenParsing f) => X -> f Beamed
-triplet x = P.triplet <$> T.braces (parseBeamed x) <?> "triplet"
+triplet :: (DeltaParsing f, MonadParseState f, TokenParsing f) => f Beamed
+triplet = P.triplet <$> T.braces parseBeamed <?> "triplet"
 
 noteHand :: CharParsing f => f Hand
 noteHand =
   (on 'R' R <|> on 'L' L) <?> "hand"
 
-noteMod :: (CharParsing f)
+noteMod :: CharParsing f
         => f (Endo Beamed)
 noteMod =
   let d s x = try (string s) $> P.dynamics x
