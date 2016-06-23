@@ -111,7 +111,7 @@ parsePart =
                   (flip Return [] <$> ft) <|>
                   (Return [] <$> st) <|>
                   (try (symbol repeatSymbol) $> Repeat)
-       pure $! Part ((maybe [] (pure . PartialBar) ana) <> beams) (fromMaybe NoRepeat rep)
+       pure $! Part (maybe [] (pure . PartialBar) ana <> beams) (fromMaybe NoRepeat rep)
 
 anacrusis :: (MonadState ParseState m, DeltaParsing m) => m (Maybe Beamed)
 anacrusis =
@@ -187,8 +187,8 @@ note x = token $
 
 lookupMods :: X -> Int64 -> Endo Beamed
 lookupMods x c =
-          let moreMods = M.lookup c x
-           in maybe mempty id moreMods
+  let moreMods = M.lookup c x
+  in fromMaybe mempty moreMods
 
 -- | { beam }
 triplet :: (DeltaParsing f, MonadParseState f, TokenParsing f) => X -> f Beamed
