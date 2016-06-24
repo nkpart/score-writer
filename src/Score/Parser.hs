@@ -130,7 +130,13 @@ anacrusis =
 
 barsOfLines :: (MonadState ParseState f, DeltaParsing f) => f [Bar]
 barsOfLines =
-  foldSome (optionalDynamics >> parseBars)
+  foldSome lineOfBars
+
+lineOfBars :: (MonadState ParseState m, DeltaParsing m) => m [Bar]
+lineOfBars =
+  do optionalDynamics
+     parseBars
+     -- At this point, the mod state should be empty
 
 optionalDynamics :: (MonadState ParseState f, DeltaParsing f) => f ()
 optionalDynamics =
@@ -182,18 +188,25 @@ duration =
 -- | Rf~
 note :: (DeltaParsing m, MonadParseState m, TokenParsing m) => m Beamed
 note = token $
-       do c <- column <$> position
+       do -- Need to grab the position before we parse anything
+          c <- column <$> position
           skipOptional duration
           thisDuration <- use parseStateNoteDuration
-          x <- use parseStateNoteMods
+          modsForHere <- modsAtPosition c
           let noteheadP =
                 do h <- noteHand
                    mods <- fold <$> many noteMod
-                   let Endo mods' = lookupMods x c <> mods
+                   let Endo mods' = modsForHere <> mods
                    pure . mods' . P.beam $ P.aNote h (1%thisDuration)
               restP =
                    on '_' (P.beam $ P.aRest (1%thisDuration))
           noteheadP <|> restP
+
+modsAtPosition :: MonadState ParseState m
+               => Int64 -> m (Endo Beamed)
+modsAtPosition c =
+  do x <- use parseStateNoteMods
+     pure $ lookupMods x c
 
 lookupMods :: X -> Int64 -> Endo Beamed
 lookupMods x c =
