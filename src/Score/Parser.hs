@@ -105,10 +105,9 @@ parseHeader s =
 
 parsePart :: (DeltaParsing f, MonadParseState f, TokenParsing f) => f Part
 parsePart =
-    do -- Upbeat (overlaps regular beams)
-       ana <- anacrusis
-       -- Regular beams (overlaps firsttime/secondtime markers)
-       beams <- barsOfLines
+    do
+       -- regular bars (overlaps firsttime/secondtime markers)
+       bars <- barsOfLines
        -- First time
        rep <- let firstTimeMarker = ":1"
                   secondTimeMarker = ":2"
@@ -120,13 +119,13 @@ parsePart =
                   (flip Return [] <$> ft) <|>
                   (Return [] <$> st) <|>
                   (try (symbol repeatSymbol) $> Repeat)
-       pure $! Part (maybe [] (pure . PartialBar) ana <> beams) (fromMaybe NoRepeat rep)
+       pure $! Part bars (fromMaybe NoRepeat rep)
 
 anacrusis :: (MonadState ParseState m, DeltaParsing m) => m (Maybe Beamed)
 anacrusis =
      let anacrusisDelimeter = symbol "/"
-         anacrusisLine = anacrusisDelimeter *> tokenLine parseBeamed
-      in optional (try (optionalDynamics >> anacrusisLine))
+         anacrusisLine = tokenLine parseBeamed <* anacrusisDelimeter
+      in optional (try anacrusisLine)
 
 barsOfLines :: (MonadState ParseState f, DeltaParsing f) => f [Bar]
 barsOfLines =
@@ -160,12 +159,14 @@ parseBars =
   -- but after that we want to consume the newline, so we token up
   token .
   T.runUnlined $ (
-  do let go =
+  do v <- fmap PartialBar <$> anacrusis
+     let go =
            do beams <- Bar <$> sepBy1 parseBeamed (symbol ",")
-              beam2 <- (symbol "|" *> barCheck beams *> go) <|>
-                (eofOrLine *> barCheck beams $> [])
+              beam2 <- (symbol "|" *> barCheck beams *> go) <|> (eofOrLine *> barCheck beams $> [])
               pure (beams : beam2)
-     go)
+     rest <- (T.newline $> []) <|> go -- must check for eof first otherwise it won't go
+     pure $ maybeToList v <> rest
+   )
 
 eofOrLine :: CharParsing f => f ()
 eofOrLine = T.newline $> () <|> T.eof

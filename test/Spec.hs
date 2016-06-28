@@ -62,7 +62,8 @@ parserTests =
                     [("R, L, R, L", part & rlrl)
                     ,(" R, L, R, L", part & rlrl)
                     ,("R, L, R, L\nR, L, R, L\nR, L, R, L", part & rlrl & rlrl & rlrl)
-                    ,("/ L\nR, L, R, L", part & upbeat l4 & rlrl)
+                    ,("L /\nR, L, R, L", part & upbeat l4 & rlrl)
+                    ,("L / R, L, R, L", part & upbeat l4 & rlrl)
                     -- TODO: this doesn't parse, but not sure it needs to or should
                     -- ,("R, L, R, L\n:1\nR, L, R, L", buildPart (rlrl >> firstTime [r4, l4, r4, l4]))
                     ,("R, L, R, L\n:2\nR, L, R, L", part & rlrl & secondTime [Bar [r4, l4, r4, l4]])
