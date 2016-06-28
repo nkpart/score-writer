@@ -73,10 +73,14 @@ engraverPrefix =
            "\
 \startGraceMusic = {\
 \  \\override NoteHead.font-size = -5\
-\}\
+\}\n\
 \stopGraceMusic = {\
 \  \\revert NoteHead.font-size\
-\}\
+\}\n\
+\bitOfLol = \\repeat unfold 10 { \\hideNotes c32 c c c c c c c \
+\c c c c c c c c \
+\c c c c c c c c \
+\c c c c c c c c }\
 \\n"
 
 renderOrientation :: Orientation -> String
@@ -103,7 +107,7 @@ renderScore (Score details signature ps) =
                                          -- This should be used to give us bar lines at the start, however we
                                          -- only end up with a dot:
                                          L.Override "SystemStartBar.collapse-height" (L.toValue (1::Int)),
-                                         L.Field "proportionalNotationDuration" (L.toLiteralValue "#(ly:make-moment 1/8)")
+                                         L.Field "proportionalNotationDuration" (L.toLiteralValue "#(ly:make-moment 1/16)")
                                          ]
                    ]]
       header = slashBlock "header" (renderDetails details <> [L.Field "tagline" (L.toValue "")])
@@ -175,17 +179,21 @@ beginScore signature i =
             -- ,L.Override "Beam.beam-thickness" (L.toValue (0.4 :: Double))
             ,L.Override "StemTremolo.beam-thickness" (L.toValue (0.3 :: Double))
             ,L.Override "StemTremolo.slope" (L.toValue (0.35 :: Double))
-            -- ,L.Override "StemTremolo.Y-offset" (L.toValue ( 0.8))
             ])
   ,
+  --  L.Raw "<< \\oneVoice"
+  -- ,
    L.Sequential
-     ([L.Slash1 "hide Staff.Clef",
+     ([
+       L.Slash1 "hide Staff.Clef",
        L.Clef L.Percussion,
        L.Slash1 "tiny"] <>
       renderSignature signature <>
       spannerStyles <>
       [beamPositions] <>
-      i)]
+      i )
+  -- , L.Raw "\\\\ { \\bitOfLol } >>"
+  ]
   where -- turn text spanners into Unison marks
         spannerStyles = [
           L.Override "TextSpanner.style" (L.toLiteralValue "#'line'")
