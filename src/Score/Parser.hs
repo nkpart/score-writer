@@ -73,12 +73,9 @@ type MonadParseState = MonadState ParseState
 
 parseScore :: (DeltaParsing f, MonadParseState f, TokenParsing f, MonadPlus f) => Signature -> f Score
 parseScore defaultSignature =
- do (signature, details) <- parseHeader defaultSignature
+ do (signature, details) <- symbol "details" *> T.braces (parseHeader defaultSignature)
     parseStateSignature .= signature
-    let headerSeparator = '='
-        partSeparator = '-'
-    _ <- token (some (char headerSeparator))
-    theParts <- parsePart `sepBy1` token (some (char partSeparator))
+    theParts <- some (symbol "part" *> T.braces parsePart)
     pure $! Score details signature theParts
 
 parseHeader :: (MonadParseState f,TokenParsing f,MonadPlus f)
@@ -108,6 +105,11 @@ parsePart =
     do
        -- regular bars (overlaps firsttime/secondtime markers)
        bars <- barsOfLines
+
+       -- first {  ... } second { .. }
+       -- repeat
+       -- <empty>
+
        -- First time
        rep <- let firstTimeMarker = ":1"
                   secondTimeMarker = ":2"
@@ -152,21 +154,26 @@ dynamics = token
               m <- fold <$> some noteMod
               pure $! M.singleton c m
 
-parseBars :: (DeltaParsing f, MonadParseState f, TokenParsing f) => f [Bar]
+type BarCheck =
+  Bar
+
+parseBars :: (DeltaParsing f, MonadParseState f, TokenParsing f) => f [BarCheck]
 parseBars =
   -- we want to treat newlines as the end of a set of beams
   -- so we run unUnlined
   -- but after that we want to consume the newline, so we token up
-  token .
-  T.runUnlined $ (
-  do v <- fmap PartialBar <$> anacrusis
-     let go =
-           do beams <- Bar <$> sepBy1 parseBeamed (symbol ",")
-              beam2 <- (symbol "|" *> barCheck beams *> go) <|> (eofOrLine *> barCheck beams $> [])
-              pure (beams : beam2)
-     rest <- (T.newline $> []) <|> go -- must check for eof first otherwise it won't go
-     pure $ maybeToList v <> rest
+  (token . T.runUnlined) (
+    do v <- (fmap PartialBar <$> anacrusis)
+       let go =
+             do beams <- Bar Nothing <$> sepBy1 parseBeamed (symbol ",")
+                beam2 <- (symbol "|" *> go) <|> (eofOrLine $> [])
+                pure (beams : beam2)
+       rest <- (T.newline $> []) <|> go -- must check for eof first otherwise it won't go
+       pure $ maybeToList v <> rest
    )
+
+-- _mkCheck :: Spanned Bar -> BarCheck
+-- _mkCheck = undefined
 
 eofOrLine :: CharParsing f => f ()
 eofOrLine = T.newline $> () <|> T.eof
@@ -175,8 +182,9 @@ barCheck :: MonadParseState f => Bar -> f ()
 barCheck bs =
   do let Sum n = bs ^. _Duration . to Sum
      s <- use parseStateSignature
-     unless (n == signatureDuration s) $
-       fail $ "Bar duration doesn't line up with the signature:" ++ show n
+     unless (n == signatureDuration s) (
+       fail ("Bar duration doesn't line up with the signature:" ++ show n)
+       )
 
 parseBeamed :: (DeltaParsing f, MonadParseState f, TokenParsing f) => f Beamed
 parseBeamed =

@@ -83,7 +83,7 @@ newtype Beamed =
 
 
 data Bar =
-    Bar [Beamed]
+    Bar (Maybe Signature) [Beamed]
   | PartialBar Beamed
   -- TODO | RepeatBar
   deriving (Eq, Show, Data, Typeable)
@@ -99,7 +99,7 @@ data Repeat
   | Return [Bar] [Bar]
   deriving (Eq,Show)
 
-data Signature = Signature Integer Integer deriving (Eq, Show)
+data Signature = Signature Integer Integer deriving (Eq, Show, Data)
 
 signatureDuration :: Signature -> Ratio Integer
 signatureDuration (Signature n d) = n % d
@@ -200,7 +200,7 @@ instance (p ~ (->),Applicative f) => AsDuration p f [Beamed] where
   _Duration = traverse . _Duration
 
 instance (Applicative f) => AsDuration (->) f Bar where
-  _Duration f (Bar bs) = Bar <$> _Duration f bs
+  _Duration f (Bar a bs) = Bar a <$> _Duration f bs
   _Duration f (PartialBar bs) = PartialBar <$> _Duration f bs
 
 instance AsNoteHead p f NoteHead where
@@ -219,7 +219,7 @@ instance (Applicative f) => AsNoteHead (->) f [Beamed] where
   _NoteHead = traverse . _NoteHead
 
 instance (Applicative f) => AsNoteHead (->) f Bar where
-  _NoteHead f (Bar bar) = Bar <$> _NoteHead f bar
+  _NoteHead f (Bar a bar) = Bar a <$> _NoteHead f bar
   _NoteHead f (PartialBar bar) = PartialBar <$> _NoteHead f bar
 
 instance (Applicative f) => AsNoteHead (->) f Part where

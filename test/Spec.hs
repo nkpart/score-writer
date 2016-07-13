@@ -78,18 +78,24 @@ parserTests =
                   scoreExamples :: [(String, Score)]
                   scoreExamples =
                     [
-                      ("===\n1L"
+                      -- TODO: get ride of the newlines at the end of parts
+                      ("details { }\npart { 1L\n }"
                      ,Score blankDetails (Signature 4 4) [part & (bar [l1])])
-                    , ("signature 2/4\n===\n2L"
+                    , ("details { signature 2/4 }\npart { 2L\n }"
                      ,Score blankDetails (Signature 2 4) [part & (bar [l2])])
-                    , ("signature 6/8\n===\n4L, L, L\n---R, R, R"
+                    , ("details { signature 6/8 }\npart { 4L, L, L\n } part { R, R, R \n }"
                      ,Score blankDetails (Signature 6 8) [part & (bar [l4,l4,l4]), part & (bar [r4,r4,r4])])
-                    , ("title \"Mrs Mac\"\nstyle \"Reel\"\ncomposer \"NP\"\nband \"OCA\"\n===\n1L\n---1R"
+                    , ("details { title \"Mrs Mac\"\nstyle \"Reel\"\ncomposer \"NP\"\nband \"OCA\" }\n part {1L\n } part {1R \n }"
                      ,Score (Details "Mrs Mac" "Reel" "NP" (Just "OCA")) (Signature 4 4) [part & (bar [l1]), part & (bar [r1])])
                     ]
 
                   testParser p (input, expected) =
-                    testCase (show input) (assertEqual "" (Right expected) (p input))
+                    do
+                    testCase (show input) (do  let v = p input
+                                               case v of
+                                                 Right x -> assertEqual "" expected x
+                                                 Left e -> fail e
+                                               assertEqual "" (Right expected) (p input))
 
 renderingTests :: TestTree
 renderingTests =

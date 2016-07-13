@@ -46,6 +46,8 @@ library
                      , parsers
                      , trifecta
                      , zippers
+
+                     , string-qq
   default-language:    Haskell2010
   ghc-options: -O2 -Wall -Werror
 

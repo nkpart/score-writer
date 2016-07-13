@@ -158,7 +158,7 @@ upbeat :: Beamed -> Part -> Part
 upbeat v = partBars %~ (\x -> x <> [PartialBar v])
 
 bar :: [Beamed] -> Part -> Part
-bar bs = partBars %~ (\x -> x <> [Bar bs])
+bar bs = partBars %~ (\x -> x <> [Bar Nothing bs])
 
 firstTime :: [Bar] -> Part -> Part
 firstTime x = partRepeat %~ f

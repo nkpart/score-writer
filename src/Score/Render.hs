@@ -1,6 +1,7 @@
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE NoMonomorphismRestriction #-}
 {-# LANGUAGE TemplateHaskell           #-}
+{-# LANGUAGE QuasiQuotes               #-}
 module Score.Render (
   printScorePage, Orientation(..)
   ) where
@@ -17,6 +18,7 @@ import           Data.Semigroup               ((<>))
 import           Data.VectorSpace
 import           Score.Types
 import           Text.Pretty
+import Data.String.QQ (s)
 
 data RenderedNote
   =
@@ -54,6 +56,7 @@ makeLenses ''RenderState
 
 -- TODO:
 -- * prettier fonts - http://lilypond.1069038.n5.nabble.com/Change-font-of-titles-composer-etc-td25870.html
+-- * pretty note font lilyjazz http://lilypondblog.org/2016/01/arnold/#more-4291
 -- * tweak note styles to look like this: http://drummingmad.com/what-are-unisons/
 -- * staff height bigger
 
@@ -69,19 +72,18 @@ printScorePage o scores =
            fmap renderScore scores)
 
 engraverPrefix :: String
-engraverPrefix =
-           "\
-\startGraceMusic = {\
-\  \\override NoteHead.font-size = -5\
-\}\n\
-\stopGraceMusic = {\
-\  \\revert NoteHead.font-size\
-\}\n\
-\bitOfLol = \\repeat unfold 10 { \\hideNotes c32 c c c c c c c \
-\c c c c c c c c \
-\c c c c c c c c \
-\c c c c c c c c }\
-\\n"
+engraverPrefix = [s|
+startGraceMusic = {
+  \override NoteHead.font-size = -5
+}
+stopGraceMusic = {
+  \revert NoteHead.font-size
+}
+bitOfLol = \repeat unfold 10 { \hideNotes c32 c c c c c c c
+c c c c c c c c
+c c c c c c c c
+c c c c c c c c }
+|]
 
 renderOrientation :: Orientation -> String
 renderOrientation o' = "#(set-default-paper-size \"a4" <> o <> "\")"
@@ -154,12 +156,19 @@ renderBars = fmap join . traverse renderBar
 
 renderBar :: Bar -> State RenderState [L.Music]
 renderBar (PartialBar b) = renderAnacrusis b <&> (<> [L.Raw "|", L.Slash1 "noBreak"])
-renderBar (Bar bs) =
-  do v <- renderManyBeameds bs
+renderBar (Bar sig bs) =
+  do let Sum barLength = bs ^. _Duration . to Sum
+     -- render barLength / min-note-dur hidden spacing notes
+         _ys = (round $ barLength / (1 % 32)) :: Int
+     v <- renderManyBeameds bs
+     -- let v' = L.Sequential (L.Slash1 "oneVoice" :v) `ggg` L.Sequential [L.Repeat True _ys (L.Sequential [L.Slash1 "hideNotes", L.Raw "c''32" ]) Nothing]
+     let v' = v
+         -- ggg a b = L.simultaneous b a
      newCount <- renderStateBarCount <+= 1
-     return $ if newCount `mod` 4 == 0
-                then v <> [L.Raw "|", L.Slash1 "break"]
-                else v <> [L.Raw "|", L.Slash1 "noBreak"]
+     return $ foldMap renderSignature sig
+            <> if newCount `mod` 4 == 0
+                then v' <> [L.Raw "|", L.Slash1 "break"]
+                else v' <> [L.Raw "|", L.Slash1 "noBreak"]
 
 renderAnacrusis :: Beamed -> State RenderState [L.Music]
 renderAnacrusis a =
@@ -181,8 +190,6 @@ beginScore signature i =
             ,L.Override "StemTremolo.slope" (L.toValue (0.35 :: Double))
             ])
   ,
-  --  L.Raw "<< \\oneVoice"
-  -- ,
    L.Sequential
      ([
        L.Slash1 "hide Staff.Clef",
@@ -192,18 +199,10 @@ beginScore signature i =
       spannerStyles <>
       [beamPositions] <>
       i )
-  -- , L.Raw "\\\\ { \\bitOfLol } >>"
   ]
-  where -- turn text spanners into Unison marks
+  where -- turn ottava brackets (octave switchers) into Unison marks
         spannerStyles = [
-          L.Override "TextSpanner.style" (L.toLiteralValue "#'line'")
-         ,L.Override "TextSpanner.bound-details.left.text" $ L.toLiteralValue "\\markup { \\draw-line #'(0 . -1.5) }"
-         ,L.Override "TextSpanner.bound-details.right.text" $ L.toLiteralValue "\\markup { \\draw-line #'(0 . -1.5) }"
-         ,L.Override "TextSpanner.bound-details.right.padding" (L.toValue (-0.5::Double))
-         ,L.Override "TextSpanner.bound-details.right.attach-dir" (L.toValue (1::Int))
-         ,L.Override "TextSpanner.thickness" (L.toValue (4::Int))
-         ,L.Override "TextSpanner.color" $ L.toLiteralValue "#(x11-color 'orange)"
-         ,L.Override "DynamicLineSpanner.direction" $ L.toValue (1::Int)
+          L.Override "DynamicLineSpanner.direction" $ L.toValue (1::Int)
          ,L.Override "Staff.OttavaBracket.thickness" $ L.toValue (2::Int)
          ,L.Override "Staff.OttavaBracket.color" $ L.toLiteralValue "#(x11-color 'OrangeRed)"
          ,L.Override "Staff.OttavaBracket.edge-height" $ L.toLiteralValue "#'(1.2 . 1.2)"
@@ -425,8 +424,8 @@ slashBlock x b = L.Slash x (L.Sequential b)
 
 restoring :: State a b -> State a b
 restoring ma =
-   do s <- get
+   do x <- get
       v <- ma
-      put s
+      put x
       return v
 
