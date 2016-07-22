@@ -1,0 +1,27 @@
+score {
+details {
+  title "Shoshanna's Lullaby"
+  style "Air/Waltz"
+  composer ""
+  band "BBC Old Collegians Pipe Band"
+  signature 3/4
+}
+part {
+*               [\<\    \.\\>\   \.\]
+_ _ _ | _ _ _ | R~, R~, R~ | R~, R, _
+
+*                           \<\[    \.\\>\ \.\] 
+4_ _ 8R~ L | Rf Lf, 4Rf _ | R~, R~, R~ |   R, _, 8R~^ L~^
+* ^                [    
+  4R, 8_ L, R~ L | 4R~, R, 8_ R~
+
+*         ]     []      [^  ^
+  16L R L Rf, L Rf L R, 8L~ R~ | 4L, _, 4R~
+
+8R {16R L R}, 8Lf L, R~ L
+
+8Rf {16R L R}, 8Lf L, R~ L
+*                           ]
+16Rf L R Lf, R Lf R L, 8R~^ L
+}
+}

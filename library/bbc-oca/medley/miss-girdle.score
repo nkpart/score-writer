@@ -1,0 +1,41 @@
+score {
+details {
+  title "Miss Girdle"
+  style "Reel"
+  composer "Nick Partridge"
+  band "BBC Old Collegians Pipe Band"
+  signature 2/2
+}
+part {
+* ^             [
+  R~, 8L L, 8Rf Lf R L
+* ^]         [
+  4R~, 8L L, 8Rf Rd 16R L R L
+* ^]           [
+  4R, 8Rf L, R Lf R L
+* ]        []    [  ]
+  8Rf R~ R Lf, R Lf Rf L
+:|
+}
+part {
+* [^                      ^]
+  16Rf L R R 8L Lf, R Lf, 4Rf
+* \p\
+  8R~ R L Rf, L Rd R L
+* [^                      ^
+  16Rf L R R 8L Lf, R Lf, 4Rf
+
+* ^]       []    [  ]
+  8Rf R~ R Lf, R Lf Rf L
+
+* ^                       ^
+  16Rf L R R 8L Lf, R Lf, 4Rf
+* \p\
+  8R~ R L Rf, L Rd R L
+* ^                       ^
+  16Rf L R R 8L Lf, R Lf, 4Rf
+
+* ^
+  8Rf R~ R Lf, 4R~
+}
+}
