@@ -8,6 +8,7 @@ import           LilypondProcess
 import           Score
 import qualified Score.Parser      as P
 import           Score.Prelude
+import Score.Render
 import           System.Directory
 import           System.FilePath
 
@@ -79,14 +80,14 @@ parserTests =
                   scoreExamples =
                     [
                       -- TODO: get ride of the newlines at the end of parts
-                      ("details { }\npart { 1L\n }"
-                     ,Score blankDetails (Signature 4 4) [part & (bar [l1])])
-                    , ("details { signature 2/4 }\npart { 2L\n }"
-                     ,Score blankDetails (Signature 2 4) [part & (bar [l2])])
-                    , ("details { signature 6/8 }\npart { 4L, L, L\n } part { R, R, R \n }"
-                     ,Score blankDetails (Signature 6 8) [part & (bar [l4,l4,l4]), part & (bar [r4,r4,r4])])
-                    , ("details { title \"Mrs Mac\"\nstyle \"Reel\"\ncomposer \"NP\"\nband \"OCA\" }\n part {1L\n } part {1R \n }"
-                     ,Score (Details "Mrs Mac" "Reel" "NP" (Just "OCA")) (Signature 4 4) [part & (bar [l1]), part & (bar [r1])])
+                      ("score { details { }\npart { 1L\n } }"
+                     ,Score blankDetails (Signature 4 4) 4 [part & (bar [l1])])
+                    , ("score { details { signature 2/4 }\npart { 2L\n } }"
+                     ,Score blankDetails (Signature 2 4) 4 [part & (bar [l2])])
+                    , ("score { details { signature 6/8 }\npart { 4L, L, L\n } part { R, R, R \n } }"
+                     ,Score blankDetails (Signature 6 8) 4 [part & (bar [l4,l4,l4]), part & (bar [r4,r4,r4])])
+                    , ("score { details { title \"Mrs Mac\"\nstyle \"Reel\"\ncomposer \"NP\"\nband \"OCA\" }\n part {1L\n } part {1R \n } }"
+                     ,Score (Details "Mrs Mac" "Reel" "NP" (Just "OCA")) (Signature 4 4) 4 [part & (bar [l1]), part & (bar [r1])])
                     ]
 
                   testParser p (input, expected) =
@@ -129,19 +130,20 @@ renderingTests =
                        ]]
 
 testScores name expected scores =
-  goldenVsFile name fullExpected outputFile (writeScorePage Portrait PNG shortOutput scores)
+  goldenVsFile name fullExpected outputFile (writeScorePage PNG shortOutput (opts, scores))
   where outputFile = "tmp" </> name <> ".png"
         shortOutput = outputFile
+        opts = RenderingOptions Portrait
         fullExpected = "test/expected" </> expected
 
 testScoreFile name expected file =
   goldenVsFile name
                fullExpected
                outputFile
-               (render PNG Portrait [file] shortOutput)
+               (render PNG file shortOutput)
   where outputFile = "tmp" </> name <> ".png"
         shortOutput = outputFile
         fullExpected = "test/expected" </> expected
 
 singleParted name sig p =
-  Score (Details name "" "" Nothing) sig [part & p]
+  Score (Details name "" "" Nothing) sig 4 [part & p]

@@ -1,3 +1,4 @@
+score {
 details {
 title "The 79th's Farewell to Gibraltar"
 style "March"
@@ -42,4 +43,5 @@ part {
   8RV 16R~. R-, L. L- Rd. R^-, )u | L u( R~ {R L R}, 8Lf^ )u L
   u( R~ 16L. )u R-~, R. u( L-^\<\ 32R L R L\.\ | 8R^ R~, 4L )u
 :|
+}
 }

@@ -1,4 +1,5 @@
 {-# LANGUAGE ConstraintKinds           #-}
+{-# LANGUAGE LambdaCase                #-}
 {-# LANGUAGE FlexibleContexts          #-}
 {-# LANGUAGE FlexibleInstances         #-}
 {-# LANGUAGE FunctionalDependencies    #-}
@@ -13,6 +14,7 @@ import           Control.Lens
 import           Control.Monad.State.Strict
 import           Data.Foldable                (fold)
 import           Data.Functor
+import Score.Defaults
 import           Data.Int
 import qualified Data.List.NonEmpty           as NE
 import qualified Data.Map.Strict              as M
@@ -21,6 +23,7 @@ import           Data.Monoid                  hiding ((<>))
 import           Data.Ratio
 import           Data.Semigroup
 import           Data.Semigroup.Foldable
+import Score.Render
 import qualified Score.Prelude                as P
 import           Score.Types
 import qualified Text.PrettyPrint.ANSI.Leijen as Pretty hiding (empty, line,
@@ -36,55 +39,69 @@ import           Text.Trifecta.Delta
 data ParseState = ParseState {
   _parseStateNoteDuration :: Integer,
   _parseStateSignature :: Signature,
-  _parseStateNoteMods :: X
+  _parseStateNoteMods :: M.Map Int64 (Endo Beamed)
   }
-
-type Mod = Endo Beamed
-
-type X = M.Map Int64 Mod
-
 makeLenses ''ParseState
-
--- | The Parsers!
----------------------------
-
-defaultParseBeam :: Parser Beamed
-defaultParseBeam = evalStateT parseBeamed initParseState
 
 -- | A parser of many beams. The default duration for a note is a quarter.
 defaultParseBeams :: Parser [Bar]
 defaultParseBeams = evalStateT parseBars initParseState
 
--- | A parser of part - optional upbeat, beams, and repeat instructions
-defaultParsePart :: Parser Part
-defaultParsePart = evalStateT parsePart initParseState
-
 defaultParseScore :: Parser Score
-defaultParseScore = evalStateT (parseScore defaultSignature) initParseState
- where defaultSignature = _parseStateSignature initParseState
+defaultParseScore = evalStateT parseScore initParseState
 
 initParseState :: ParseState
-initParseState = ParseState 4 (Signature 4 4) mempty
+initParseState = ParseState defaultNoteLength defaultSignature mempty
+
+defaultParseScoreFile ::
+  DeltaParsing m => m (RenderingOptions, [Score])
+defaultParseScoreFile = evalStateT parseScoreFile initParseState
 
 type MonadParseState = MonadState ParseState
 
--- | Syntax bits
------------------------
 
-parseScore :: (DeltaParsing f, MonadParseState f, TokenParsing f, MonadPlus f) => Signature -> f Score
-parseScore defaultSignature =
- do (signature, details) <- symbol "details" *> T.braces (parseHeader defaultSignature)
+parseScoreFile ::
+  (MonadState ParseState m, DeltaParsing m) => m (RenderingOptions, [Score])
+parseScoreFile =
+    do renderingStyles <- optional (parseStyles defaultStyles)
+       scores <- some parseScore
+       pure (fromMaybe defaultStyles renderingStyles, scores)
+
+defaultStyles :: RenderingOptions
+defaultStyles = RenderingOptions Portrait
+
+parseStyles :: (MonadPlus f, TokenParsing f) => RenderingOptions -> f RenderingOptions
+parseStyles defaults =
+  braced "styles" $
+  execStateT p defaults
+  where p = many (orientationP)
+        orientationP = symbol "orientation" *> stringLiteral >>= \case
+                          "landscape" -> pure Landscape
+                          "portrait" -> pure Portrait
+                          v -> fail $ "Unknown orientation: " ++ v
+                       >>= assign renderingOptionsOrientation
+
+parseScore :: (DeltaParsing f, MonadParseState f, TokenParsing f, MonadPlus f) => f Score
+parseScore =
+ braced "score" $
+ do initSig <- use parseStateSignature
+    (signature, details, barsPerLine) <- braced "details" $ parseHeader (initSig,blankDetails, defaultBarsPerLine)
     parseStateSignature .= signature
-    theParts <- some (symbol "part" *> T.braces parsePart)
-    pure $! Score details signature theParts
+    theParts <- some (braced "part" parsePart)
+    pure $! Score details signature barsPerLine theParts
 
-parseHeader :: (MonadParseState f,TokenParsing f,MonadPlus f)
-            => Signature -> f (Signature,Details)
-parseHeader s =
-  execStateT p
-             (s,blankDetails)
+-- | name { ... }
+braced :: TokenParsing f => String -> f b -> f b
+braced n inner = symbol n *> T.braces inner
+
+parseHeader ::
+  (Num b, MonadPlus m, Field3 s s a1 b, Field2 s s Details Details,
+   Field1 s s a Signature, TokenParsing m) =>
+  s -> m s
+parseHeader defaults =
+  execStateT p defaults
   where p =
-          many (sigP <|> styleP <|> titleP <|> composerP <|> bandP)
+          many (sigP <|> styleP <|> titleP <|> composerP <|> bandP <|> barsPerLineP)
         titleP =
           symbol "title" *> stringLiteral >>= assign (_2 . detailsTitle)
         styleP =
@@ -93,6 +110,8 @@ parseHeader s =
           symbol "composer" *> stringLiteral >>= assign (_2 . detailsComposer)
         bandP =
           symbol "band" *> stringLiteral >>= (assign (_2 . detailsBand) . Just)
+        barsPerLineP =
+          symbol "bars-per-line" *> (fromInteger <$> natural) >>= assign _3
         sigP =
           do _ <- symbol "signature"
              d <- natural
@@ -144,10 +163,10 @@ optionalDynamics =
   do v <- fromMaybe M.empty <$> optional dynamicsLine
      parseStateNoteMods .= v
 
-dynamicsLine :: DeltaParsing p => p (M.Map Int64 Mod)
+dynamicsLine :: DeltaParsing p => p (M.Map Int64 (Endo Beamed))
 dynamicsLine = token $ runUnlined (symbol "*" *> (fold <$> many dynamics))
 
-dynamics :: DeltaParsing p => p (M.Map Int64 Mod)
+dynamics :: DeltaParsing p => p (M.Map Int64 (Endo Beamed))
 dynamics = token
          $ do someSpace
               c <- column <$> position
@@ -165,7 +184,7 @@ parseBars =
   (token . T.runUnlined) (
     do v <- (fmap PartialBar <$> anacrusis)
        let go =
-             do beams <- Bar Nothing <$> sepBy1 parseBeamed (symbol ",")
+             do beams <- Bar <$> sepBy1 parseBeamed (symbol ",")
                 beam2 <- (symbol "|" *> go) <|> (eofOrLine $> [])
                 pure (beams : beam2)
        rest <- (T.newline $> []) <|> go -- must check for eof first otherwise it won't go
@@ -217,7 +236,7 @@ modsAtPosition c =
   do x <- use parseStateNoteMods
      pure $ lookupMods x c
 
-lookupMods :: X -> Int64 -> Endo Beamed
+lookupMods :: M.Map Int64 (Endo Beamed) -> Int64 -> Endo Beamed
 lookupMods x c =
   let moreMods = M.lookup c x
   in fromMaybe mempty moreMods
@@ -315,4 +334,10 @@ instance DeltaParsing f => DeltaParsing (Unlined f) where
   line = Unlined line
   position = Unlined position
   slicedWith f (Unlined ma) = Unlined (slicedWith f ma)
+
+defaultParseBeam :: Parser Beamed
+defaultParseBeam = evalStateT parseBeamed initParseState
+
+defaultParsePart :: Parser Part
+defaultParsePart = evalStateT parsePart initParseState
 

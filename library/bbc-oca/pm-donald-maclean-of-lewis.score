@@ -1,3 +1,4 @@
+score {
 details {
 title "Pipe Major Donald Maclean of Lewis"
 style "March"
@@ -36,4 +37,5 @@ Rf. R-~ R, R.~ R- L^~ | R. L- R, 4Lf, 8L
 :2
 Rf. R~- R, 4Lf, 8R~ | {L^ R L} Rf, Lf. R- L
 Rf. R-~ R, R.~ R- L^~     | R. L- R, 4Lf, 8L
+}
 }

@@ -3,7 +3,7 @@
 {-# LANGUAGE TemplateHaskell           #-}
 {-# LANGUAGE QuasiQuotes               #-}
 module Score.Render (
-  printScorePage, Orientation(..)
+  printScorePage, Orientation(..), RenderingOptions(..), renderingOptionsOrientation
   ) where
 
 import           Control.Lens
@@ -20,6 +20,16 @@ import           Score.Types
 import           Text.Pretty
 import Data.String.QQ (s)
 
+data RenderingOptions =
+  RenderingOptions {
+                    _renderingOptionsOrientation :: Orientation}
+  deriving (Eq,Show)
+
+data Orientation = Portrait | Landscape deriving (Eq, Show)
+
+makeLenses ''RenderingOptions
+
+-- | Annotated productions of Music
 data RenderedNote
   =
     -- This lets us add beams just to these bits of music, otherwise
@@ -43,13 +53,13 @@ _NoteMusic _ (GraceMusic c) = pure (GraceMusic c)
 _NoteMusic _ (OtherMusic c) = pure (OtherMusic c)
 _NoteMusic f (Tupleted a b c) = Tupleted a b <$> (traverse . _NoteMusic) f c
 
-
 -- | State that needs to be managed while we render
 --   * note modifications are stored here, they are picked up on one note
 --     and apply to the next note
---   * bar count. used to apply a line break after every 4
+--   * bar count. used to apply a line break after every N
 data RenderState =
   RenderState {_renderStateNoteMods :: [NoteMod]
+              ,_renderStateBarsPerLine :: Int
               ,_renderStateBarCount :: Int}
   deriving (Eq, Show)
 makeLenses ''RenderState
@@ -60,12 +70,11 @@ makeLenses ''RenderState
 -- * tweak note styles to look like this: http://drummingmad.com/what-are-unisons/
 -- * staff height bigger
 
-data Orientation = Portrait | Landscape deriving (Eq, Show)
 
-printScorePage :: Orientation -> [Score] -> String
-printScorePage o scores =
+printScorePage :: RenderingOptions -> [Score] -> String
+printScorePage ro scores =
           engraverPrefix <>
-          renderOrientation o <> "\n" <>
+          renderOrientation (_renderingOptionsOrientation ro) <> "\n" <>
           (runPrinter . pretty . slashBlock "book" $
            slashBlock "paper" [L.Field "print-all-headers" (L.toLiteralValue "##t")] :
            slashBlock "header" [L.Field "tagline" (L.toValue "")] :
@@ -94,9 +103,9 @@ renderOrientation o' = "#(set-default-paper-size \"a4" <> o <> "\")"
 
 
 renderScore :: Score -> L.Music
-renderScore (Score details signature ps) =
+renderScore (Score details signature barsPerLine ps) =
   let content =
-        flip evalState (RenderState [] 0) $
+        flip evalState (RenderState [] barsPerLine 0) $
         do
            bs <- traverse renderPart ps
            pure $! beginScore signature (F.toList bs)
@@ -156,17 +165,18 @@ renderBars = fmap join . traverse renderBar
 
 renderBar :: Bar -> State RenderState [L.Music]
 renderBar (PartialBar b) = renderAnacrusis b <&> (<> [L.Raw "|", L.Slash1 "noBreak"])
-renderBar (Bar sig bs) =
+renderBar (Bar bs) =
   do let Sum barLength = bs ^. _Duration . to Sum
      -- render barLength / min-note-dur hidden spacing notes
          _ys = (round $ barLength / (1 % 32)) :: Int
+     barsPerLine <- use renderStateBarsPerLine
      v <- renderManyBeameds bs
      -- let v' = L.Sequential (L.Slash1 "oneVoice" :v) `ggg` L.Sequential [L.Repeat True _ys (L.Sequential [L.Slash1 "hideNotes", L.Raw "c''32" ]) Nothing]
      let v' = v
          -- ggg a b = L.simultaneous b a
      newCount <- renderStateBarCount <+= 1
-     return $ foldMap renderSignature sig
-            <> if newCount `mod` 4 == 0
+     return $
+               if newCount `mod` barsPerLine == 0
                 then v' <> [L.Raw "|", L.Slash1 "break"]
                 else v' <> [L.Raw "|", L.Slash1 "noBreak"]
 

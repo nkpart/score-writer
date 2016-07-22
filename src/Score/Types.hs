@@ -83,11 +83,12 @@ newtype Beamed =
 
 
 data Bar =
-    Bar (Maybe Signature) [Beamed]
+    Bar [Beamed]
   | PartialBar Beamed
   -- TODO | RepeatBar
   deriving (Eq, Show, Data, Typeable)
 
+-- TODO Bars can set the signature
 data Part =
   Part {_partBars :: [Bar]
        ,_partRepeat :: Repeat}
@@ -107,6 +108,7 @@ signatureDuration (Signature n d) = n % d
 data Score =
   Score {_scoreDetails :: Details
         ,_scoreSignature :: Signature
+        ,_scoreBarsPerLine :: Int
         ,_scoreParts :: [Part]}
   deriving (Eq,Show)
 
@@ -200,7 +202,7 @@ instance (p ~ (->),Applicative f) => AsDuration p f [Beamed] where
   _Duration = traverse . _Duration
 
 instance (Applicative f) => AsDuration (->) f Bar where
-  _Duration f (Bar a bs) = Bar a <$> _Duration f bs
+  _Duration f (Bar bs) = Bar <$> _Duration f bs
   _Duration f (PartialBar bs) = PartialBar <$> _Duration f bs
 
 instance AsNoteHead p f NoteHead where
@@ -219,15 +221,14 @@ instance (Applicative f) => AsNoteHead (->) f [Beamed] where
   _NoteHead = traverse . _NoteHead
 
 instance (Applicative f) => AsNoteHead (->) f Bar where
-  _NoteHead f (Bar a bar) = Bar a <$> _NoteHead f bar
+  _NoteHead f (Bar bar) = Bar <$> _NoteHead f bar
   _NoteHead f (PartialBar bar) = PartialBar <$> _NoteHead f bar
 
 instance (Applicative f) => AsNoteHead (->) f Part where
-  -- TODO should this touch the anacrusis?
   _NoteHead f (Part bars rep) = Part <$> (traverse . _NoteHead) f bars <*> pure rep
 
 instance (Applicative f) => AsNoteHead (->) f Score where
-  _NoteHead f (Score d sig s) = Score d sig <$> (traverse . _NoteHead) f s
+  _NoteHead f (Score d a sig s) = Score d a sig <$> (traverse . _NoteHead) f s
 
 instance AsSignature p f Signature where
   _Signature = id

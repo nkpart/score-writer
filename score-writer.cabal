@@ -21,6 +21,7 @@ library
                        Score.Prelude
                        Score.Parser
                        Score.Parser.QQ
+                       Score.Defaults
                        LilypondProcess
   build-depends:       base >= 4.7 && < 5
                      , containers
