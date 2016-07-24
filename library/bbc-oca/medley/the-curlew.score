@@ -1,9 +1,12 @@
+score {
+details {
 title "The Curlew"
 style "Jig"
 composer ""
 band "BBC OCA PB"
 signature 12/8
-======================================================================================
+}
+part {
 * ^          ^            [\<\ \.\
   4Rf., 4Lf, 8Rf, L Rd R, Lf R Lf
 *            ]              
@@ -13,7 +16,7 @@ signature 12/8
 * [    ]        []             [        ]
   Rf L R^, L Rf Lf^, 16R L R L 8R^, L R L
 :|
----------------------------------------------------------------------------------
+} part {
 * [^    ]                   ^
   4R~., 8R L 8Rd, 16R L R L 8R, L R L
 * [\<\  ]\.\       []        [
@@ -23,3 +26,5 @@ signature 12/8
 * [    ]        []             [        ]
   Rf L R^, L Rf Lf^, 16R L R L 8R^, L R L
 :|
+}
+}

@@ -1,14 +1,19 @@
+score {
+details {
 title "Lexy McAskill"
 style "Reel"
 composer ""
 band "BBC OCA PB"
 signature 2/2
-======================================================================================
+}
+part {
 4RfV, R~\pp\, u( {8L R L}, Rf.\<\ L-\.\ | 4RfV )u, 8Rf. u( LV-, R.\>\ R-\.\, Lf. )u L-
 4Rf, u( R~\<\, {8L R L}, Rf. L-^\.\, )u | 16R L R L, 8R^. L-, u( 4R~, L )u
 :|
-----------------------------------------------------
+} part {
 16L /
 u( 4R^~ )u, u( L^~, RV~, 8L. )u L- | {8R L R}, Lf. u( RV-, L.\>\ L-\.\, Rf. )u L-
 u( 4R^~ )u, u( L^~, RV~, 8L. )u L-\<\ | 16R L R L\.\, 8R^. L-, u( 4R~, L )u
 :|
+}
+}

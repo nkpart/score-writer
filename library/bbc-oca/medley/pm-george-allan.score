@@ -1,11 +1,14 @@
+score {
+details {
 title "Pipe Major George Allan"
 style "Hornpipe"
 composer ""
 band "BBC OCA Pipe Band"
 signature 2/2
-===========================================================
-* [\<\     ]\.\                   
-  4Rf, Lf, 4Rf~., 8L
+}
+part {
+* [\<\    ]\.\                   
+  4R, Lf, 4Rf~., 8L
 * ^        ^        ^[
   8Rf R~ R Lf, R L, 4R~
 * ]                 ^  ^
@@ -21,7 +24,7 @@ signature 2/2
 * [                      ]
   16Rf L 8R L 8Rf, 4Lf., 4L-
 :|
------------------------------------------------------------
+} part {
 * [V    \pp\
   8Rf _ Rf Lf, _ Lf Rf _
 *              \<\                \.\
@@ -56,3 +59,5 @@ signature 2/2
   4R, 4_, 2_
 *
   1_
+}
+}

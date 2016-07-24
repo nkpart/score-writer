@@ -1,9 +1,12 @@
+score {
+details {
 title "The Inner Guard"
 style "March"
 composer ""
 band "BBC OCA PB"
 signature 4/4
-======================================================================================
+}
+part {
 * [    ]             ^  [   ]
   4R~, 8R 32R L R L, 8R R~, L {16R L R}
 * []       [                 \<\
@@ -21,7 +24,7 @@ signature 4/4
   8R~ {16L R L}, 8R~ {16L R L}, 8R~ L~, {16R L R} 8Lf
 *          ]
   4Rf, R~, R, _
----------------------------------------------------------------------------------------
+  } part {
   8L /
 * [    ]             ^  [   ]
   4R~, 8R 32R L R L, 8R R~, L {16R L R}
@@ -40,3 +43,5 @@ signature 4/4
   8R~ {16L R L}, 8R~ {16L R L}, 8R~ L~, {16R L R} 8Lf
 *             ]
   4Lf, R~, R, _
+  }
+}

@@ -1,9 +1,12 @@
+score {
+details {
 title "The Boys of the Lough"
 style "Jig"
 composer ""
 band "BBC OCA PB"
 signature 12/8
-=========================================
+}
+part {
 * [^   ^]             ^           [
   4Rf, 8Lf, 16R L R L 8R, L R~ R, R~ R L
 * ^]   [^]     [^\p\
@@ -13,7 +16,7 @@ signature 12/8
 * [^]    [         ^          ]
   L R L, 16Rf L 8R L, R L Rf, 4Lf.
 :|
-----------------------------------------
+} part {
   8L /
 * [^       ^\<\ ^       ^  ^\.\ ]^
   4Rf, 8L, 4R~, 8L~, L~ R~ L~,  L R L
@@ -31,3 +34,5 @@ signature 12/8
   4R, 8Rf, 8L R L, R L Rf, Lf R~ R
 * ^                ^
   L R L, 16Rf L 8R L, R L Rf, 4Lf.
+}
+}

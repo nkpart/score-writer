@@ -15,7 +15,7 @@ part {
   R~ {16L R L}, 16Rf. R-~ R. L-  | 32R L R L 8R~, L 16R. L-
 * ^]   \p\        [\<\ \.\] \p\
   8Rf. L-, R~ L | 4R~, 8R   L
-* [  ]            [^\<\      \.\         ]
+* [  ]            [^                     ]
   R~ 16L. R-~, R. L- 32R L R L | 8R^ R~, 4L
 :|
 } part {
@@ -26,22 +26,22 @@ part {
   8Rf 16R~ R, L. R- L. L- | 8Rf R~, L~ 32R L R L
 * ]   \p\                 [                     ]
   8R^ 16R.~ R-, L. L- R.f L-^ | {R L R} Lf. L-, 8Rf L
-* [  ]            [^\<\      \.\ ^      ]
+* [  ]            [^             ^      ]
   R~ 16L. R-~, R. L- 32R L R L | 8R R~, 4L
 :|
 } part {
 * [\p\
   16R. L- /
-  8R~ {16L R L}, {Rf^ )u L R} {u( Lf^ )u R L} | {L R u( Rf^} L. L-, 8R~\<\ {16L R L\.\}
+  8R~ {16L R L}, {Rf^ )u L R} {u( Lf^ )u R L} | {R L u( Rf^} L. L-, 8R~\<\ {16L R L\.\}
   16RfV. )u L- R~. R-, L. u( Rd- R. L^- | 32R L R L 8R~V L )u 16R. L-
   8R~\p\ {16L R L}, u(, 8R^~ LV~ | {16R L RV} L. L-, 8Rf L
-  u( R~ 16L. )u R-~, R. u( L-^\<\ 32R L R L\.\ | 8R^ R~, 4L )u
+  u( R~ 16L. )u R-~, R. u( L-^ 32R L R L | 8R^ R~, 4L )u
 } part {
   16R. L- /
   8R~. L-, R^~ L | u( 4R~, 8R )u L
   u( R~\>\ 16L.\.\ )u R^-, L. L- 32R L R L | 8R^ u( R~, 8LV~ 32R L R L
   8RV 16R~. R-, L. L- Rd. R^-, )u | L u( R~ {R L R}, 8Lf^ )u L
-  u( R~ 16L. )u R-~, R. u( L-^\<\ 32R L R L\.\ | 8R^ R~, 4L )u
+  u( R~ 16L. )u R-~, R. u( L-^ 32R L R L | 8R^ R~, 4L )u
 :|
 }
 }
