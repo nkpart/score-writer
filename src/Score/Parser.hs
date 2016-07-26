@@ -92,7 +92,7 @@ parseScore =
 
 -- | name { ... }
 braced :: TokenParsing f => String -> f b -> f b
-braced n inner = symbol n *> T.braces inner
+braced n inner = symbol n *> (T.braces inner)
 
 parseHeader ::
   (Num b, MonadPlus m, Field3 s s a1 b, Field2 s s Details Details,
