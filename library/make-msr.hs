@@ -20,6 +20,4 @@ main = sh $
        procs "score-writer" ["render", "--score-file", p1f, "--output-file", encode m] mempty
        procs "score-writer" ["render", "--score-file", p2f, "--output-file", encode sr] mempty
 
-       -- shells ("score-writer render --portrait --score-file bbc-oca/msr/inner-guard.score --output-file " <> encode m) mempty
-       -- shells ("score-writer render --portrait --score-file bbc-oca/msr/dorrator.score --score-file bbc-oca/msr/lexy.score --output-file " <> encode sr) mempty
        shells ("/usr/local/bin/gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -sOutputFile=msr.pdf " <> encode m <> " " <> encode sr) mempty
