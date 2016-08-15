@@ -297,24 +297,21 @@ renderNote (Tuplet r h) =
           GraceMusic o :| (x:xs) -> GraceMusic o <| mkTuplet (x:|xs)
           _ -> pure $ tupletGroup ns
    in mkTuplet notes
-renderNote (U u) = pure $ renderUnison u
 
 renderRest :: Duration -> RenderedNote
 renderRest n = OtherMusic (pure $ L.Rest (Just $ L.Duration n) [])
 
-renderUnison :: Unison -> RenderedNote
-renderUnison u =
-  let su =
+renderStartUnison :: NonEmpty L.Music
+renderStartUnison =
          L.Raw "\\ottava #1"
          :|
          [L.Set "Staff.middleCPosition" (L.toValue (0::Int))
          ,L.Set "Staff.ottavation" (L.toValue "")
          ]
-      eu =
+
+renderStopUnison :: Applicative f => f L.Music
+renderStopUnison =
          pure (L.Raw "\\ottava #0")
-  in case u of
-           StartUnison -> GraceMusic su
-           StopUnison -> GraceMusic eu
 
 tweaksForBigAccent :: NE.NonEmpty L.Music
 tweaksForBigAccent =
@@ -331,7 +328,7 @@ renderNoteHead :: NoteHead -> NE.NonEmpty RenderedNote
 renderNoteHead n =
   let pitch = hand leftPitch rightPitch (n ^. noteHeadHand)
       oppPitch = hand rightPitch leftPitch (n ^. noteHeadHand)
-      embell = fmap (GraceMusic . f) (n^.noteHeadEmbellishment)
+      embell = fmap f (n^.noteHeadEmbellishment)
                 where f Flam = pure $ slashBlock "slashedGrace" [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
                       f Drag =
                             pure $
@@ -391,14 +388,27 @@ renderNoteHead n =
                    NoAccent -> []
                    AccentRegular -> []
                    AccentBig -> pure (OtherMusic tweaksForBigAccent)
+      unisonMusic =
+                 case n ^. noteHeadStartUnison of
+                   False -> []
+                   True -> F.toList renderStartUnison
+
       postMusic = case n ^. noteHeadAccent of
                    NoAccent -> []
                    AccentRegular -> []
                    AccentBig -> pure (OtherMusic revertsForBigAccent)
+              <> case n ^. noteHeadStopUnison of
+                   False -> []
+                   True -> [OtherMusic renderStopUnison]
       finalNote =
         startTie . endTie . addDynamics . addCresc . stopCresc $ thisHead
   -- TODO refactor fromList. might need some more NE methods (preppend and append foldables of a)
-  in maybe id cons embell $ NE.fromList $ preMusic <> [NoteMusic finalNote] <> postMusic
+      a `pref` b =
+        NE.fromList (F.toList a <> NE.toList b)
+  in
+    NE.fromList $
+    maybe (F.toList $ fmap OtherMusic $ NE.nonEmpty unisonMusic) (\a -> [GraceMusic $ unisonMusic `pref` a]) embell <> preMusic <> [NoteMusic finalNote] <> postMusic
+
 
 mapDynamics :: Dynamics -> L.Dynamics
 mapDynamics p = case p of
@@ -438,4 +448,3 @@ restoring ma =
       v <- ma
       put x
       return v
-

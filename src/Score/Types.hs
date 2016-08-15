@@ -38,9 +38,6 @@ data Embellishment
   | Ratamacue
   deriving (Eq, Show, Data, Typeable)
 
-data Unison =
-  StartUnison | StopUnison deriving (Eq, Show, Data, Typeable)
-
 data NoteHead =
   NoteHead {_noteHeadHand :: Hand
            ,_noteHeadAccent :: AccentSize
@@ -54,6 +51,8 @@ data NoteHead =
            -- these should be applied to the note after this one
            ,_noteHeadMods :: [NoteMod]
            ,_noteHeadDynamics :: Maybe Dynamics
+           ,_noteHeadStartUnison :: Bool
+           ,_noteHeadStopUnison :: Bool
            }
   deriving (Eq, Show, Data, Typeable)
 
@@ -63,7 +62,6 @@ data AccentSize = NoAccent |  AccentRegular | AccentBig deriving (Eq, Show, Data
 data Note = Note NoteHead
           | Tuplet (Ratio Integer) (NonEmpty Note)
           | Rest (Ratio Integer)
-          | U Unison
             deriving (Eq, Show, Data, Typeable)
 
 data NoteMod = EndRoll deriving (Eq, Show, Data, Typeable)
@@ -173,8 +171,6 @@ instance (p ~ (->),Applicative f) => AsHand p f Note where
   _Hand f (Note n) = Note <$> _Hand f n
   _Hand _ (Rest n) = pure (Rest n)
   _Hand f (Tuplet r n) = Tuplet r <$> (traverse . _NoteHead . _Hand) f n
-  _Hand _ (U u) = pure (U u)
-  -- _Hand _ StopUnison = pure StopUnison
 
 instance (p ~ (->),Applicative f) => AsHand p f Beamed where
   _Hand f (Beamed n) = Beamed <$> (traverse . _Hand) f n -- <*> pure m
@@ -186,7 +182,6 @@ instance (p ~ (->),Applicative f) => AsDuration p f Note where
   _Duration f (Note n) = Note <$> _Duration f n
   _Duration f (Rest n) = Rest <$> f n
   _Duration f (Tuplet r n) = Tuplet r <$> (traverse . _Duration . tupletise r) f n
-  _Duration _ (U u) = pure (U u)
 
 -- HOLY TEST ME BATMAN
 tupletise :: Ratio Integer -> Simple Iso (Ratio Integer) (Ratio Integer)
@@ -212,7 +207,6 @@ instance Applicative f => AsNoteHead (->) f Note where
   _NoteHead f (Note h) = Note <$> f h
   _NoteHead _ (Rest n) = pure (Rest n)
   _NoteHead f (Tuplet d ns) = Tuplet d <$> (traverse . _NoteHead) f ns
-  _NoteHead _ (U u) = pure (U u)
 
 instance (Applicative f) => AsNoteHead (->) f Beamed where
   _NoteHead = beamedNotes . traverse . _NoteHead

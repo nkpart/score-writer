@@ -35,10 +35,3 @@ formatForFile fp =
     ".png" -> Just PNG
     ".ps" -> Just PS
     _ -> Nothing
-
-test :: IO ()
-test =
-  do runLilypond PNG "x.png" "{ c' }"
-     print =<< doesFileExist "x.png"
-     -- removeFile "x.png"
-

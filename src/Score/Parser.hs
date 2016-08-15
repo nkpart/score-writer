@@ -207,7 +207,7 @@ barCheck bs =
 
 parseBeamed :: (DeltaParsing f, MonadParseState f, TokenParsing f) => f Beamed
 parseBeamed =
-  foldSome (optional someSpace *> (note <|> triplet <|> startUnison <|> endUnison))
+  foldSome (optional someSpace *> (note <|> triplet))
 
 duration :: (MonadParseState f, TokenParsing f) => f ()
 duration =
@@ -264,8 +264,8 @@ noteMod =
   on 'd' P.drag <|>
   on 'r' P.ruff <|>
   on 'u' P.ratamacue <|>
-  on '[' (P.startUnison <>) <|>
-  on ']' (<> P.stopUnison) <|>
+  on '[' P.startUnison <|>
+  on ']' P.stopUnison <|>
   d "\\pppp\\" PPPP <|>
   d "\\ppp\\" PPP <|>
   d "\\pp\\" PP <|>
@@ -285,14 +285,6 @@ noteMod =
   try (string "\\<\\") $> P.startCrescendo <|>
   try (string "\\>\\") $> P.startDecrescendo <|>
   try (string "\\.\\") $> P.endCresc
-
-startUnison :: TokenParsing f => f Beamed
-startUnison =
-  symbol "u(" $> P.startUnison <?> "start-unison"
-
-endUnison :: TokenParsing f => f Beamed
-endUnison =
-  symbol ")u" $> P.stopUnison <?> "end-unison"
 
 -- | Support
 ----------------

@@ -64,17 +64,8 @@ triplet = tuplet 3 2
 tuplet :: Integer -> Integer -> Beamed -> Beamed
 tuplet a b (Beamed n) = Beamed (pure $ Tuplet (a % b) n)
 
-startUnison :: Beamed
-startUnison = Beamed (pure $ U StartUnison)
-
-stopUnison :: Beamed
-stopUnison = Beamed (pure $ U StopUnison)
-
-thisUnison :: Beamed -> Beamed
-thisUnison x = startUnison <-> x <-> stopUnison
-
 aNote :: Hand -> Ratio Integer -> Note
-aNote h d = Note $ NoteHead h NoAccent False d False False Nothing False Nothing [] Nothing
+aNote h d = Note $ NoteHead h NoAccent False d False False Nothing False Nothing [] Nothing False False
 
 beam :: Note -> Beamed
 beam = Beamed . pure
@@ -131,6 +122,14 @@ dot = _Duration %~ (* (3/2))
 
 cut :: AsDuration (->) Identity t => t -> t
 cut = _Duration %~ (* (1/2))
+
+startUnison :: AsNoteHead (->) Identity t => t -> t
+startUnison =
+  _NoteHead . noteHeadStartUnison .~ True
+
+stopUnison :: AsNoteHead (->) Identity t => t -> t
+stopUnison =
+  _NoteHead . noteHeadStopUnison .~ True
 
 -- | Bit builders
 

@@ -9,6 +9,7 @@ import           Score
 import qualified Score.Parser      as P
 import           Score.Prelude
 import Score.Render
+import Control.Monad (when)
 import           System.Directory
 import           System.FilePath
 
@@ -24,7 +25,9 @@ lilypondProcessTests :: TestTree
 lilypondProcessTests =
   let test =
         (do runLilypond PNG "x.png" "{ c' }"
-            doesFileExist "x.png") @? "runLilypond writes to the requested file"
+            v <- doesFileExist "x.png"
+            when v (removeFile "x.png")
+            pure v) @? "runLilypond writes to the requested file"
   in testCase "runLilypond" test
 
 parserTests :: TestTree
@@ -45,7 +48,7 @@ parserTests =
                     ,("16R. 8L-", dot r16 <> cut l8)
                     ,("16R L", r16 <> l16)
                     ,("R L", r4 <> l4)
-                    ,("u( L )u", startUnison <> l4 <> stopUnison)
+                    ,("L[]", (startUnison . stopUnison) l4)
                     ,("{8L R L}", triplet (l8 <-> r8 <-> l8))
                     ]
 
