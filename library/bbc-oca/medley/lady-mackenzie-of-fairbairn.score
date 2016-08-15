@@ -7,20 +7,30 @@ band "BBC OCA PB"
 signature 4/4
 }
 part {
-4R~\<\, R\.\, 8Rd- R., u( 4R~\<\           | RV\.\ )u, {16R L R L u( 8Rf\p\ }, {8L R Lf}, 8Rf. )u L-
-*  ^\<\                               \.\
-u( 4R~, 8R^~. 8L-^~ )u, {R~ R~^ L~^}, 8L. L- | u( 4Rf, 8Rr. R-d, )u, {16R L R L u( 8R^}, 8Lf. )u L-
-4R~\<\, R\.\, 8Rd- R., 4R~\<\                 | RV\.\, {16R L R L 8Rf\p\}, {8L R Lf}, 8Rf. L-
+*                        [        ]                 [                    ]
+  4R~\<\, R\.\, 8Rd- R., 4R~\<\ | RV\.\, {16R L R L 8Rf\p\ }, {8L R Lf}, 8Rf. L-
+* [^\<\      ]                    \.\      [         ]               [     ]
+  4R~, 8R^~. 8L-^~, {R~ R~^ L~^}, 8L. L- | 4Rf, 8Rr. R-d, {16R L R L 8R^}, 8Lf. L-
+* 
+  4R~\<\, R\.\, 8Rd- R., 4R~\<\ | RV\.\, {16R L R L 8Rf\p\}, {8L R Lf}, 8Rf. L-
 * ^\<\                            \.\
   4R~, 8R^~. 8L-^~, {R~ R~^ L~^}, 8L. L- | 4Rf, 8Rr. R-d, {16R L R L 8R^}, 8Lf. L-
 } part {
-u( 4R^~\pp\ )u, u( 8R^~. 8L-^~ )u, {R~ R~^ L~^}, u( 8L^.~ R^-~ )u
-{8R~ L^ R^~}, u( 8R^~. L^~- )u, {8R~ R^ L^~}, 8L^. L-
-u( 8Rf.V )u Lf-, {16R L R L u( 8Rf^}, {8L R Lf}, 8Rf^. )u L-
-u( 4Rf, 8Rr. R-d, )u, {16R L R L u( 8R^}, 8Lf. )u L-
-4R^~\pp\ , 8R^~. 8L-^~ , {R~ R~^ L~^},  8L^.~ R^-~ 
-{8R~ L^ R^~},  8R^~. L^~- , {8R~ R^ L^~}, 8L^. L-
-8Rf.V  Lf-, {16R L R L  8Rf^}, {8L R Lf}, 8Rf^.  L-
-4Rf, 8Rr. R-d , {16R L R L  8R^}, 4L~
+* []        [     ]                    [     ]
+  4R^~\pp\, 8R^~. 8L-^~, {R~ R~^ L~^}, 8L^.~ R^-~
+*               [     ]
+  {8R~ L^ R^~}, 8R^~. L^~-, {8R~ R^ L^~}, 8L^. L-
+* []                    [                 ]
+  8Rf.V Lf-, {16R L R L 8Rf^}, {8L R Lf}, 8Rf^. L-
+* [         ]               [     ]
+  4Rf, 8Rr. R-d, {16R L R L 8R^}, 8Lf. L-
+*
+  4R^~\pp\ , 8R^~. 8L-^~ , {R~ R~^ L~^},  8L^.~ R^-~ 
+*
+  {8R~ L^ R^~},  8R^~. L^~- , {8R~ R^ L^~}, 8L^. L-
+*
+  8Rf.V  Lf-, {16R L R L  8Rf^}, {8L R Lf}, 8Rf^.  L-
+*
+  4Rf, 8Rr. R-d , {16R L R L  8R^}, 4L~
 }
 }
