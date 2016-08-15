@@ -7,13 +7,17 @@ band "BBC OCA PB"
 signature 2/2
 }
 part {
-4RfV, R~\pp\, u( {8L R L}, Rf.\<\ L-\.\ | 4RfV )u, 8Rf. u( LV-, R.\>\ R-\.\, Lf. )u L-
-4Rf, u( R~\<\, {8L R L}, Rf. L-^\.\, )u | 16R L R L, 8R^. L-, u( 4R~, L )u
+*              [                       ]          [                 ]
+4RfV, R~\pp\, {8L R L}, Rf.\<\ L-\.\ | 4RfV, 8Rf. LV-, R.\>\ R-\.\, Lf. L-
+*    [                    ]                            [    ]
+4Rf, R~\<\, {8L R L}, Rf. L-^\.\ | 16R L R L, 8R^. L-, 4R~, L
 :|
 } part {
 16L /
-u( 4R^~ )u, u( L^~, RV~, 8L. )u L- | {8R L R}, Lf. u( RV-, L.\>\ L-\.\, Rf. )u L-
-u( 4R^~ )u, u( L^~, RV~, 8L. )u L-\<\ | 16R L R L\.\, 8R^. L-, u( 4R~, L )u
+* []    [         ]                      [                 ]
+  4R^~, L^~, RV~, 8L. L- | {8R L R}, Lf. RV-, L.\>\ L-\.\, Rf. L-
+* []    [         ]                                  [    ]
+  4R^~, L^~, RV~, 8L. L-\<\ | 16R L R L\.\, 8R^. L-, 4R~, L
 :|
 }
 }

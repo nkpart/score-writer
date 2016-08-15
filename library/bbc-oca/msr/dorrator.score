@@ -7,12 +7,16 @@ band "BBC OCA PB"
 signature 4/4
 }
 part {
-4RfV, Lf, 8Rr. u( Lf-, R- L.^~\<\                          | R.V\.\ L-, Rf. Lf-, )u, { 16R\<\ L R L\.\ 8RV }, L. L-
-u( 4R~V\>\, {16R\.\\<\ L R L\.\ 8R^}, )u, {L Rd R^}, L. L- | u( {Rf Lf Rf} )u, L. L-, u( 4R~, R
+*                [                                                         ]
+  4RfV, Lf, 8Rr. Lf-, R- L.^~\<\                      | R.V\.\ L-, Rf. Lf-, { 16R\<\ L R L\.\ 8RV }, L. L-
+* [                            ]                         [     ^]          [
+  4R~V\>\, {16R\.\\<\ L R L\.\ 8R^}, {L Rd R^}, L. L- | {Rf Lf Rf}, L. L-, 4R~, R
 :|
 } part {
-u( 4R~V\>\, {16R L R L 8R\.\ }, )u, 8L. L-, u( 4R~\<\     | 8R.V\.\ L-, Rf. Lf- )u, { 16R\<\ L R L\.\ 8RV }, L. L-
-u( 4R~V\>\, {16R\.\\<\ L R L\.\ 8R^} )u, {L Rd R^}, L. L- | u( {Rf Lf Rf} )u, L. L-, u( 4R~, R
+* [                            ^]      [                                ]
+  4R~V\>\, {16R L R L 8R\.\ }, 8L. L-, 4R~\<\         | 8R.V\.\ L-, Rf. Lf-, { 16R\<\ L R L\.\ 8RV }, L. L-
+* [                            ]                         [     ^]          [    ]
+  4R~V\>\, {16R\.\\<\ L R L\.\ 8R^}, {L Rd R^}, L. L- | {Rf Lf Rf}, L. L-, 4R~, R
 :|
 }
 }

@@ -12,8 +12,8 @@ main = sh $
        sr <- using $ mktempfile "." "sr.pdf"
        let p1 = ["bbc-oca/msr/79ths.score"]
            p2 = ["bbc-oca/msr/dorrator.score", "bbc-oca/msr/lexy.score"]
-       p1f <- encode <$> using (mktempfile "." "p1.score")
-       p2f <- encode <$> using (mktempfile "." "p2.score")
+       p1f <- encode <$> using (mktempfile "." "march.score")
+       p2f <- encode <$> using (mktempfile "." "s-r.score")
        shells ("cat " <> (intercalate " " p1) <> " > " <> p1f) mempty
        shells ("cat " <> "styles/landscape.score " <> (intercalate " " p2) <> " > " <> p2f) mempty
 
