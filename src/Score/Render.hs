@@ -164,6 +164,7 @@ renderBars :: [Bar] -> State RenderState [L.Music]
 renderBars = fmap join . traverse renderBar
 
 renderBar :: Bar -> State RenderState [L.Music]
+renderBar (SignatureChange x) = pure (renderSignature x)
 renderBar (PartialBar b) = renderAnacrusis b <&> (<> [L.Raw "|", L.Slash1 "noBreak"])
 renderBar (Bar bs) =
   do let Sum barLength = bs ^. _Duration . to Sum
@@ -205,10 +206,10 @@ beginScore signature i =
        L.Slash1 "hide Staff.Clef",
        L.Clef L.Percussion,
        L.Slash1 "tiny"] <>
-      renderSignature signature <>
       spannerStyles <>
       [beamPositions] <>
-      i )
+      renderSignature signature <>
+      i)
   ]
   where -- turn ottava brackets (octave switchers) into Unison marks
         spannerStyles = [

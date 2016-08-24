@@ -83,6 +83,7 @@ newtype Beamed =
 data Bar =
     Bar [Beamed]
   | PartialBar Beamed
+  | SignatureChange Signature
   -- TODO | RepeatBar
   deriving (Eq, Show, Data, Typeable)
 
@@ -199,6 +200,7 @@ instance (p ~ (->),Applicative f) => AsDuration p f [Beamed] where
 instance (Applicative f) => AsDuration (->) f Bar where
   _Duration f (Bar bs) = Bar <$> _Duration f bs
   _Duration f (PartialBar bs) = PartialBar <$> _Duration f bs
+  _Duration _ s@(SignatureChange _) = pure s
 
 instance AsNoteHead p f NoteHead where
   _NoteHead = id
@@ -217,6 +219,7 @@ instance (Applicative f) => AsNoteHead (->) f [Beamed] where
 instance (Applicative f) => AsNoteHead (->) f Bar where
   _NoteHead f (Bar bar) = Bar <$> _NoteHead f bar
   _NoteHead f (PartialBar bar) = PartialBar <$> _NoteHead f bar
+  _NoteHead _ s@(SignatureChange _) = pure s
 
 instance (Applicative f) => AsNoteHead (->) f Part where
   _NoteHead f (Part bars rep) = Part <$> (traverse . _NoteHead) f bars <*> pure rep
