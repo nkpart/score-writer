@@ -27,7 +27,6 @@ prettyFormat PNG = "png"
 prettyFormat PDF = "pdf"
 prettyFormat PS = "ps"
 
-
 formatForFile :: FilePath -> Maybe Format
 formatForFile fp =
   case takeExtension fp of

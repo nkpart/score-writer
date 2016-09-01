@@ -8,19 +8,11 @@ packages:
 - '../lilypond'
 - location: 
     git: https://github.com/music-suite/music-dynamics.git
-    commit: ced2f09
-  extra-dep: true
-- location:
-    git: https://github.com/music-suite/music-dynamics-literal.git
-    commit: dc41e9a
+    commit: 4bd0d2e
   extra-dep: true
 - location:
     git: https://github.com/music-suite/music-pitch.git
-    commit: 0308c04
-  extra-dep: true
-- location: 
-    git: https://github.com/music-suite/music-pitch-literal.git
-    commit: ad069f8 
+    commit: 3a732aee29e8e49526c97403926a66090c669c8a
   extra-dep: true
 
 extra-deps:

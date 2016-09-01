@@ -15,7 +15,6 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     Score
-                       Score.Editor
                        Score.Types
                        Score.Render
                        Score.Prelude

@@ -36,15 +36,3 @@ execCli (Render inp outp) =
   render (checkFormat (formatForFile outp)) inp outp
     where checkFormat (Just v) = v
           checkFormat Nothing = error $ "Unsupported file format for output: " <> outp
--- execCli (View xx) =
---   do tmpDir <- getTemporaryDirectory
---      tmpFile <- (tmpDir </>) . (++".pdf") . formatTime defaultTimeLocale "%q" <$> getCurrentTime
---      render PDF xx tmpFile
---      callCommand $ "open -n -W " <> tmpFile
---      x <- doesFileExist tmpFile
---      when x (removeFile tmpFile)
---      return ()
-
--- viewScore score =
---   do writeScorePage PDF "wizzle.pdf" score
---      callCommand "open -a Safari -g wizzle.pdf"

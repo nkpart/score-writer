@@ -21,8 +21,7 @@ import           Text.Pretty
 import Data.String.QQ (s)
 
 data RenderingOptions =
-  RenderingOptions {
-                    _renderingOptionsOrientation :: Orientation}
+  RenderingOptions {_renderingOptionsOrientation :: Orientation}
   deriving (Eq,Show)
 
 data Orientation = Portrait | Landscape deriving (Eq, Show)
