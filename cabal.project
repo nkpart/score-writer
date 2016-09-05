@@ -1,0 +1,5 @@
+packages:  ../lilypond
+           ../score-writer
+           music-dynamics
+           music-pitch
+           ../x/parsers
