@@ -6,10 +6,10 @@ module Score.Render (
   printScorePage, Orientation(..), RenderingOptions(..), renderingOptionsOrientation
   ) where
 
-import           Control.Lens
+import           Control.Lens hiding ((<|))
 import           Control.Monad.State.Strict
 import qualified Data.Foldable                as F
-import           Data.List.NonEmpty           (NonEmpty((:|)))
+import           Data.List.NonEmpty           (NonEmpty((:|)), (<|))
 import qualified Data.List.NonEmpty           as NE
 import qualified Data.Music.Lilypond          as L hiding (F)
 import qualified Data.Music.Lilypond.Dynamics as L
@@ -46,7 +46,7 @@ data RenderedNote
              (NE.NonEmpty RenderedNote)
 
 -- | _NoteMusic :: Traversal' RenderedNote L.Music
-_NoteMusic :: (Applicative f,Functor f) => (L.Music -> f L.Music) -> RenderedNote -> f RenderedNote
+_NoteMusic :: (Applicative f) => (L.Music -> f L.Music) -> RenderedNote -> f RenderedNote
 _NoteMusic f (NoteMusic c) = NoteMusic <$> f c
 _NoteMusic _ (GraceMusic c) = pure (GraceMusic c)
 _NoteMusic _ (OtherMusic c) = pure (OtherMusic c)

@@ -31,7 +31,6 @@ import qualified Text.PrettyPrint.ANSI.Leijen as Pretty hiding (empty, line,
 import           Text.Trifecta                as T
 import           Text.Trifecta.Delta
 
-
 -- | Things that can change as we do the parsing
 --    * note duration is set optionally before each note head, it carries forward
 --    * Signature should be able to be changed as we go, used to do bar checks
@@ -81,7 +80,7 @@ parseStyles defaults =
                           v -> fail $ "Unknown orientation: " ++ v
                        >>= assign renderingOptionsOrientation
 
-parseScore :: (DeltaParsing f, MonadParseState f, TokenParsing f, MonadPlus f) => f Score
+parseScore :: (DeltaParsing f, MonadParseState f) => f Score
 parseScore =
  braced "score" $
  do initSig <- use parseStateSignature
@@ -119,7 +118,7 @@ parseHeader defaults =
              r <- natural
              _1 .= Signature d r
 
-parsePart :: (DeltaParsing f, MonadParseState f, TokenParsing f) => f Part
+parsePart :: (DeltaParsing f, MonadParseState f) => f Part
 parsePart =
     do
        -- regular bars (overlaps firsttime/secondtime markers)
@@ -176,7 +175,7 @@ dynamics = token
 type BarCheck =
   Bar
 
-parseBars :: (DeltaParsing f, MonadParseState f, TokenParsing f) => f [BarCheck]
+parseBars :: (DeltaParsing f, MonadParseState f) => f [BarCheck]
 parseBars =
   -- we want to treat newlines as the end of a set of beams
   -- so we run unUnlined
@@ -205,7 +204,7 @@ barCheck bs =
        fail ("Bar duration doesn't line up with the signature:" ++ show n)
        )
 
-parseBeamed :: (DeltaParsing f, MonadParseState f, TokenParsing f) => f Beamed
+parseBeamed :: (DeltaParsing f, MonadParseState f) => f Beamed
 parseBeamed =
   foldSome (optional someSpace *> (note <|> triplet))
 
@@ -214,7 +213,7 @@ duration =
   assign parseStateNoteDuration =<< natural <?> "duration"
 
 -- | Rf~
-note :: (DeltaParsing m, MonadParseState m, TokenParsing m) => m Beamed
+note :: (DeltaParsing m, MonadParseState m) => m Beamed
 note = token $
        do -- Need to grab the position before we parse anything
           c <- column <$> position
@@ -242,7 +241,7 @@ lookupMods x c =
   in fromMaybe mempty moreMods
 
 -- | { beam }
-triplet :: (DeltaParsing f, MonadParseState f, TokenParsing f) => f Beamed
+triplet :: (DeltaParsing f, MonadParseState f) => f Beamed
 triplet = P.triplet <$> T.braces parseBeamed <?> "triplet"
 
 noteHand :: CharParsing f => f Hand
@@ -315,7 +314,7 @@ runParser p input =
   let v = parseString p mempty input
    in case v of
         Success e -> Right e
-        Failure d -> Left (renderX d)
+        Failure (ErrInfo d _) -> Left (renderX d)
 
 renderX :: Pretty.Doc -> String
 renderX xs =
