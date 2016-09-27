@@ -17,6 +17,8 @@ library
   exposed-modules:     Score
                        Score.Types
                        Score.Render
+                       Score.Render.RenderedNote
+                       Score.Render.Music
                        Score.Prelude
                        Score.Parser
                        Score.Parser.QQ

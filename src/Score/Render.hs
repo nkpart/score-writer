@@ -10,11 +10,12 @@ import           Control.Lens hiding ((<|))
 import           Control.Monad.State.Strict
 import qualified Data.Foldable                as F
 import           Data.List.NonEmpty           (NonEmpty((:|)), (<|))
+import Score.Render.Music
 import qualified Data.List.NonEmpty           as NE
 import qualified Data.Music.Lilypond          as L hiding (F)
-import qualified Data.Music.Lilypond.Dynamics as L
 import           Data.Ratio
 import           Data.Semigroup               ((<>))
+import Score.Render.RenderedNote
 import           Data.VectorSpace
 import           Score.Types
 import           Text.Pretty
@@ -27,30 +28,6 @@ data RenderingOptions =
 data Orientation = Portrait | Landscape deriving (Eq, Show)
 
 makeLenses ''RenderingOptions
-
--- | Annotated productions of Music
-data RenderedNote
-  =
-    -- This lets us add beams just to these bits of music, otherwise
-    -- we might attach them to things that aren't notes (overrides, etc.)
-    NoteMusic L.Music
-  |
-    -- We track grace notes because they need to be floated outside of
-    -- tuplets
-    GraceMusic (NE.NonEmpty L.Music)
-    -- Any other bits of lilypond data (overrides, etc.) falls here
-  | OtherMusic (NE.NonEmpty L.Music)
-    -- Tuplets need to be rendered as a block, so they are recursive
-  | Tupleted Int
-             Int
-             (NE.NonEmpty RenderedNote)
-
--- | _NoteMusic :: Traversal' RenderedNote L.Music
-_NoteMusic :: (Applicative f) => (L.Music -> f L.Music) -> RenderedNote -> f RenderedNote
-_NoteMusic f (NoteMusic c) = NoteMusic <$> f c
-_NoteMusic _ (GraceMusic c) = pure (GraceMusic c)
-_NoteMusic _ (OtherMusic c) = pure (OtherMusic c)
-_NoteMusic f (Tupleted a b c) = Tupleted a b <$> (traverse . _NoteMusic) f c
 
 -- | State that needs to be managed while we render
 --   * note modifications are stored here, they are picked up on one note
@@ -87,10 +64,6 @@ startGraceMusic = {
 stopGraceMusic = {
   \revert NoteHead.font-size
 }
-bitOfLol = \repeat unfold 10 { \hideNotes c32 c c c c c c c
-c c c c c c c c
-c c c c c c c c
-c c c c c c c c }
 |]
 
 renderOrientation :: Orientation -> String
@@ -99,7 +72,6 @@ renderOrientation o' = "#(set-default-paper-size \"a4" <> o <> "\")"
            case o' of
              Portrait -> "portrait"
              Landscape -> "landscape"
-
 
 renderScore :: Score -> L.Music
 renderScore (Score details signature barsPerLine ps) =
@@ -192,12 +164,12 @@ beginScore signature i =
          Nothing
          (slashBlock
             "with"
-            [L.Override "StaffSymbol.line-count" (L.toValue (1 :: Int))
-            ,L.Override "Stem.direction" (L.toValue (-1 :: Int))
+            [override "StaffSymbol.line-count" (1 :: Int)
+            ,override "Stem.direction" (-1 :: Int)
             -- TODO play with beam thickness
             -- ,L.Override "Beam.beam-thickness" (L.toValue (0.4 :: Double))
-            ,L.Override "StemTremolo.beam-thickness" (L.toValue (0.3 :: Double))
-            ,L.Override "StemTremolo.slope" (L.toValue (0.35 :: Double))
+            ,override "StemTremolo.beam-thickness" (0.3 :: Double)
+            ,override "StemTremolo.slope" (0.35 :: Double)
             ])
   ,
    L.Sequential
@@ -212,28 +184,31 @@ beginScore signature i =
   ]
   where -- turn ottava brackets (octave switchers) into Unison marks
         spannerStyles = [
-          L.Override "DynamicLineSpanner.direction" $ L.toValue (1::Int)
-         ,L.Override "Staff.OttavaBracket.thickness" $ L.toValue (2::Int)
-         ,L.Override "Staff.OttavaBracket.color" $ L.toLiteralValue "#(x11-color 'OrangeRed)"
-         ,L.Override "Staff.OttavaBracket.edge-height" $ L.toLiteralValue "#'(1.2 . 1.2)"
-         ,L.Override "Staff.OttavaBracket.bracket-flare" $ L.toLiteralValue "#'(0 . 0)"
-         ,L.Override "Staff.OttavaBracket.dash-fraction" $ L.toValue (1.0::Double)
-         ,L.Override "Staff.OttavaBracket.shorten-pair"  $ L.toLiteralValue "#'(-0.4 . -0.4)"
-         ,L.Override "Staff.OttavaBracket.staff-padding" $ L.toValue (3.0::Double)
-         ,L.Override "Staff.OttavaBracket.minimum-length" $ L.toValue (1.0::Double)
+          override "DynamicLineSpanner.direction" (1::Int)
+         ,override "Staff.OttavaBracket.thickness" (2::Int)
+         ,overrideL "Staff.OttavaBracket.color" "#(x11-color 'OrangeRed)"
+         ,overrideL "Staff.OttavaBracket.edge-height" "#'(1.2 . 1.2)"
+         ,overrideL "Staff.OttavaBracket.bracket-flare" "#'(0 . 0)"
+         ,override "Staff.OttavaBracket.dash-fraction" (1.0::Double)
+         ,overrideL "Staff.OttavaBracket.shorten-pair" "#'(-0.4 . -0.4)"
+         ,override "Staff.OttavaBracket.staff-padding" (3.0::Double)
+         ,override "Staff.OttavaBracket.minimum-length" (1.0::Double)
          ]
 
 setMomentAndStructure :: Integer -> [Integer] -> [L.Music]
 setMomentAndStructure moment momentGroups =
   let mm = "#(ly:make-moment 1/" <> show moment <> ")"
       structure = unwords (map show momentGroups)
-   in [L.Set "baseMoment" $ L.toLiteralValue mm,
-       L.Set "beatStructure" $ L.toLiteralValue $ "#'(" <> structure <> ")"]
+   in literalSet "baseMoment" mm <>
+      literalSet "beatStructure" ("#'(" <> structure <> ")")
+
+literalSet :: Applicative f => String -> String -> f L.Music
+literalSet k v = pure (L.Set k (L.toLiteralValue v))
 
 renderSignature :: Signature -> [L.Music]
 renderSignature sig@(Signature n m) =
-  [L.Set "strictBeatBeaming" (L.toLiteralValue "##t"),
-   L.Set "subdivideBeams" $ L.toLiteralValue "##t"] <>
+  literalSet "strictBeatBeaming" "##t" <>
+  literalSet "subdivideBeams" "##t" <>
   momentAndStructure <>
   [L.Time n m]
   where
@@ -300,147 +275,6 @@ renderNote (Tuplet r h) =
 
 renderRest :: Duration -> RenderedNote
 renderRest n = OtherMusic (pure $ L.Rest (Just $ L.Duration n) [])
-
-renderStartUnison :: NonEmpty L.Music
-renderStartUnison =
-         L.Raw "\\ottava #1"
-         :|
-         [L.Set "Staff.middleCPosition" (L.toValue (0::Int))
-         ,L.Set "Staff.ottavation" (L.toValue "")
-         ]
-
-renderStopUnison :: Applicative f => f L.Music
-renderStopUnison =
-         pure (L.Raw "\\ottava #0")
-
-tweaksForBigAccent :: NE.NonEmpty L.Music
-tweaksForBigAccent =
-         L.Raw "\\once \\override Script.rotation = #'(-90 0 0)"
-         :|
-         [L.Raw "\\once \\override Script.font-size = #3"
-         ,L.Raw "\\once \\override Script.staff-padding = #2.0"]
-
-revertsForBigAccent :: NE.NonEmpty L.Music
-revertsForBigAccent =
-   L.Revert "Script.rotation" :| L.Revert "Script.font-size" : L.Revert "Script.staff-padding" : []
-
-renderNoteHead :: NoteHead -> NE.NonEmpty RenderedNote
-renderNoteHead n =
-  let pitch = hand leftPitch rightPitch (n ^. noteHeadHand)
-      oppPitch = hand rightPitch leftPitch (n ^. noteHeadHand)
-      embell = fmap f (n^.noteHeadEmbellishment)
-                where f Flam = pure $ slashBlock "slashedGrace" [0.5 *^ L.note (L.NotePitch oppPitch Nothing)]
-                      f Drag =
-                            pure $
-                            slashBlock "grace" [
-                              L.Revert "Beam.positions",
-                              0.25 *^ L.note (L.NotePitch oppPitch Nothing),
-                              0.25 *^ L.note (L.NotePitch oppPitch Nothing),
-                              beamPositions
-                              ]
-                      f Ratamacue =
-                            pure $
-                            slashBlock "grace" [
-                              0.25 *^ L.note (L.NotePitch oppPitch Nothing),
-                              0.25 *^ L.note (L.NotePitch oppPitch Nothing)
-                              ]
-                      f Ruff = pure $
-                        L.Slash1 "grace" ^+^
-                         L.Sequential [
-                            L.Revert "Beam.positions",
-                            0.25 *^ L.note (L.NotePitch pitch Nothing),
-                            0.25 *^ L.note (L.NotePitch oppPitch Nothing),
-                            0.25 *^ L.note (L.NotePitch oppPitch Nothing),
-                            beamPositions
-                            ]
-      events =
-        let accF =
-              case n^.noteHeadAccent of
-                AccentBig -> (L.Articulation L.Above L.Accent:)
-                AccentRegular -> (L.Articulation L.Above L.Accent:)
-                NoAccent -> id
-            buzzF =
-              if n^.noteHeadBuzz
-                 -- TODO: tremolo doesn't look quite right
-                 -- I really just want to say "add 2 stripes to this stem"
-                 then (L.TremoloS 32:)
-                 else id
-         in accF . buzzF $ []
-
-      thisHead = L.Note (L.NotePitch pitch Nothing) (Just $ L.Duration (n ^. noteHeadDuration)) events
-      endTie = if n^.noteHeadSlurEnd
-                  then L.endSlur
-                  else id
-      startTie = if n^.noteHeadSlurBegin
-                  then L.beginSlur
-                  else id
-      addDynamics = case n^.noteHeadDynamics of
-                      Just p -> L.addDynamics' L.Above (mapDynamics p)
-                      Nothing -> id
-      addCresc = case n^.noteHeadCrescBegin of
-                   Just Cresc -> L.beginCresc
-                   Just Decresc -> L.beginDim
-                   Nothing -> id
-      stopCresc = if n^.noteHeadCrescEnd
-                   then L.endCresc
-                   else id
-      preMusic = case n ^. noteHeadAccent of
-                   NoAccent -> []
-                   AccentRegular -> []
-                   AccentBig -> pure (OtherMusic tweaksForBigAccent)
-      unisonMusic =
-                 case n ^. noteHeadStartUnison of
-                   False -> []
-                   True -> F.toList renderStartUnison
-
-      postMusic = case n ^. noteHeadAccent of
-                   NoAccent -> []
-                   AccentRegular -> []
-                   AccentBig -> pure (OtherMusic revertsForBigAccent)
-              <> case n ^. noteHeadStopUnison of
-                   False -> []
-                   True -> [OtherMusic renderStopUnison]
-      finalNote =
-        startTie . endTie . addDynamics . addCresc . stopCresc $ thisHead
-  -- TODO refactor fromList. might need some more NE methods (preppend and append foldables of a)
-      a `pref` b =
-        NE.fromList (F.toList a <> NE.toList b)
-  in
-    NE.fromList $
-    maybe (F.toList $ fmap OtherMusic $ NE.nonEmpty unisonMusic) (\a -> [GraceMusic $ unisonMusic `pref` a]) embell <> preMusic <> [NoteMusic finalNote] <> postMusic
-
-
-mapDynamics :: Dynamics -> L.Dynamics
-mapDynamics p = case p of
-                  PPPPP -> L.PPPPP
-                  PPPP -> L.PPPP
-                  PPP -> L.PPP
-                  PP -> L.PP
-                  P -> L.P
-                  MP -> L.MP
-                  MF -> L.MF
-                  F -> L.F
-                  FF -> L.FF
-                  FFF -> L.FFF
-                  FFFF -> L.FFFF
-                  SF -> L.SF
-                  SFF -> L.SFF
-                  SFZ -> L.SFZ
-                  RFZ -> L.RFZ
-                  SP -> L.SP
-                  SPP -> L.SPP
-
-leftPitch :: L.Pitch
-leftPitch = L.Pitch (L.B, 0, 4)
-
-rightPitch :: L.Pitch
-rightPitch = L.Pitch (L.D, 0, 5)
-
-beamPositions :: L.Music
-beamPositions = L.Override "Beam.positions" (L.toLiteralValue "#'(-3.5 . -3.5)")
-
-slashBlock :: String -> [L.Music] -> L.Music
-slashBlock x b = L.Slash x (L.Sequential b)
 
 restoring :: State a b -> State a b
 restoring ma =

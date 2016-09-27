@@ -1,19 +1,17 @@
-resolver: lts-5.10
+resolver: lts-7.0
 
 packages:
 - '.'
 - location:
     '../x/parsers'
   extra-dep: true
-- '../lilypond'
-- location: 
-    git: https://github.com/music-suite/music-dynamics.git
-    commit: 4bd0d2e
+- location:
+    'music-dynamics'
   extra-dep: true
 - location:
-    git: https://github.com/music-suite/music-pitch.git
-    commit: 3a732aee29e8e49526c97403926a66090c669c8a
+    'music-pitch'
   extra-dep: true
+- '../lilypond'
 
 extra-deps:
 - average-0.6.1
@@ -23,10 +21,6 @@ extra-deps:
 - type-unary-0.2.21
 - applicative-numbers-0.1.3
 - extended-reals-0.2.1.0
-- ty-0.1.6
-- vector-space-points-0.2.1.1
+- ty-0.1.7
+- vector-space-points-0.2.1.2
   # for dev
-- cabal-helper-0.6.3.1
-- zippers-0.2.2
-# Override default flag values for local packages and extra-deps
-flags: {}

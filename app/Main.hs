@@ -4,7 +4,6 @@ module Main where
 import           LilypondProcess
 import           Options.Applicative
 import           Score
-import Data.Monoid
 -- import           Data.Time
 -- import           System.Directory
 -- import           System.FilePath
